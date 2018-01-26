@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <title>Apparmor profile for Virtualbox | zep's blog
+</title>
+  <link rel="canonical" href="https://7a6570.github.io/apparmor-profile-for-virtualbox.html">
+
+  <link rel="alternate" type="application/atom+xml" href="https://7a6570.github.io/feeds/all.atom.xml" title="Full Atom Feed">
+  <link rel="alternate" type="application/atom+xml" href="https://7a6570.github.io/feeds/hardening.atom.xml" title="Categories Atom Feed">
+
+
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/pygments/native.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/style.css">
+
+
+<meta name="description" content="custom apparmor profile for Virtualbox">
+</head>
+
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-4">
+          <a href="https://7a6570.github.io">
+            <img class="img-fluid" src=https://7a6570.github.io/images/zep.png alt="zep's blog">
+          </a>
+        </div>
+        <div class="col-sm-8">
+          <h1 class="title"><a href="https://7a6570.github.io">zep's blog</a></h1>
+          <p class="text-muted">follow me into the rabbit hole of ITsec</p>
+          <ul class="list-inline">
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/about.html">About</a></li>
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/contact.html">Contact</a></li>
+            <li class=" list-inline-item text-muted">|</li>
+            <li class="list-inline-item"><a class="fa fa-github" href="https://github.com/7a6570" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-feed" href="/feeds/all.atom.xml" target="_blank"></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="container">
+      <h1>Apparmor profile for Virtualbox
+</h1>
+      <hr>
+<article class="article">
+  <header>
+    <ul class="list-inline">
+      <li class="list-inline-item text-muted" title="2018-01-26T13:01:56.217662+00:00">
+        <i class="fa fa-clock-o"></i>
+        Fri 26 January 2018
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-folder-open-o"></i>
+        <a href="https://7a6570.github.io/category/hardening.html">hardening</a>
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-files-o"></i>
+        <a href="https://7a6570.github.io/tag/apparmor.html">#apparmor</a>,         <a href="https://7a6570.github.io/tag/vbox.html">#vbox</a>      </li>
+    </ul>
+  </header>
+  <div class="content">
+    <p>I recently switched from KVM / libvirt to Virtualbox for malware analysis due to various reasons. First of all, I was sick of the buggy console output provided by SPICE <a class="footnote-reference" href="#id3" id="id1">[1]</a>. I often use IDA running inside of an offline VM, therefore a good quality VM console is important. Virtualbox offers this, apart of some unpleasant things like separate kernel modules, the need for the 'extension pack' if some extended features are wanted and of course it's owned by Oracle...</p>
+<p>From a security point of view, the separate kernel modules are an other nasty thing. To make a possible VM escape harder, it makes sense to use some sort of MAC <a class="footnote-reference" href="#id4" id="id2">[2]</a> to confine all Virtualbox processes. A focused attacker will anyway try to target directly the kernel and maybe the needed VirtualBox kernel modules.. But an other layer of defense is never wrong ;-)</p>
+<p>In this article, I'll show how to create a custom Apparmor profile for Virtualbox.</p>
+<p>First we're using aa-genprof to easily generate a basic profile skeleton. aa-genprof will then write a mark to syslog and set the new profile to complain mode. Now the program to profile can be executed and all access attempts will be logged to /var/log/audit.log ( this location actually depends on the used configuration ).</p>
+<div class="highlight"><pre><span></span><span class="c1"># create basic profile and set to complain mode</span>
+aa-genprof -d /etc/apparmor.d /usr/bin/VirtualBox
+
+<span class="c1"># execute programm in different shell</span>
+/usr/bin/VirtualBox
+
+<span class="c1"># scan logs, hit S</span>
+</pre></div>
+<p>The generated draft profile is not really useful at the moment, as it seems not all actions are logged in complain mode. We therefore set the profile to enforce mode:</p>
+<div class="highlight"><pre><span></span><span class="c1"># set to enforce mode</span>
+aa-enforce /usr/lib64/virtualbox/VirtualBox
+</pre></div>
+<p>Now all actions actions are logged and we can use aa-logprof to refine the profile accordingly. aa-logprof will ask you how to handle certain access attempts by the confined program. Such a question may look like this:</p>
+<div class="highlight"><pre><span></span>Profile:  /usr/lib64/virtualbox/VirtualBox
+Path:     /home/zep/.VirtualBox/selectorwindow.log
+Old Mode: r
+New Mode: owner rw
+Severity: <span class="m">6</span>
+
+ <span class="o">[</span><span class="m">1</span> - owner /home/*/.VirtualBox/selectorwindow.log rw,<span class="o">]</span>
+  <span class="m">2</span> - owner /home/zep/.VirtualBox/** rw,
+  <span class="m">3</span> - owner /home/zep/.VirtualBox/selectorwindow.log rw,
+<span class="o">(</span>A<span class="o">)</span>llow / <span class="o">[(</span>D<span class="o">)</span>eny<span class="o">]</span> / <span class="o">(</span>I<span class="o">)</span>gnore / <span class="o">(</span>G<span class="o">)</span>lob / Glob with <span class="o">(</span>E<span class="o">)</span>xtension / <span class="o">(</span>N<span class="o">)</span>ew / Audi<span class="o">(</span>t<span class="o">)</span> / <span class="o">(</span>O<span class="o">)</span>wner permissions off / Abo<span class="o">(</span>r<span class="o">)</span>t / <span class="o">(</span>F<span class="o">)</span>inish
+</pre></div>
+<p>We can see the used profile (/usr/lib64/virtualbox/VirtualBox) and the denied action, which we can allow now: VirtualBox tried to access the file /home/zep/.VirtualBox/selectorwindow.log. We can now select between 1,2 or 3 to set the access granularity. We can also ignore the event (I), we can deny it explicitly or make the selected path more generic (G). During this event processing we can create also new apparmor profiles for executables, which are started by VirtualBox. At the end we have multiple profiles for VirtualBox, in the best case one profile for each executable. The easiest way to reload the new profile is to restart the apparmor service:</p>
+<div class="highlight"><pre><span></span><span class="c1"># the generated profiles for VirtualBox</span>
+ls /etc/apparmor.d/ <span class="p">|</span> grep VB
+
+usr.lib64.virtualbox.VBoxNetAdpCtl
+usr.lib64.virtualbox.VBoxNetDHCP
+usr.lib64.virtualbox.VBoxSVC
+usr.lib64.virtualbox.VBoxTestOGL
+usr.lib64.virtualbox.VBoxXPCOMIPCD
+</pre></div>
+<div class="highlight"><pre><span></span><span class="c1"># restart apparmor service to reload all profiles</span>
+rc-service apparmor restart
+</pre></div>
+<p>To test the profile, we start again VirtualBox. This will likely fail, because we have not yet executed the entire Virtualbox functionality and therefore the profile is incomplete. But all denied actions are logged and we refine the profile again using aa-logprof. This cycle has to be repeated three to four times.</p>
+<p>If we quickly want to disable the profile, we can set it manually to complain mode:</p>
+<div class="highlight"><pre><span></span><span class="c1"># set to complain mode: only log and don&#39;t deny</span>
+aa-complain /usr/lib64/virtualbox/VirtualBox
+</pre></div>
+<p>To get a quick overview over all loaded profiles and the status of the confined processes:</p>
+<div class="highlight"><pre><span></span><span class="c1"># get overview</span>
+aa-status
+</pre></div>
+<table class="docutils footnote" frame="void" id="id3" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>SPICE: <a class="reference external" href="https://www.spice-space.org/">https://www.spice-space.org/</a></td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id4" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Mandatory Access Control: <a class="reference external" href="https://de.wikipedia.org/wiki/Mandatory_Access_Control">https://de.wikipedia.org/wiki/Mandatory_Access_Control</a></td></tr>
+</tbody>
+</table>
+
+  </div>
+</article>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+       <ul class="col-sm-6 list-inline">
+          <li class="list-inline-item"><a href="https://7a6570.github.io/archives.html">Archives</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/categories.html">Categories</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/tags.html">Tags</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>
