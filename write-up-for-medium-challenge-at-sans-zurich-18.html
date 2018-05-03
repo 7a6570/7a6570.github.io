@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <title>Write-up for medium challenge at SANS Zurich 18 | zep's blog
+</title>
+  <link rel="canonical" href="https://7a6570.github.io/write-up-for-medium-challenge-at-sans-zurich-18.html">
+
+  <link rel="alternate" type="application/atom+xml" href="https://7a6570.github.io/feeds/all.atom.xml" title="Full Atom Feed">
+  <link rel="alternate" type="application/atom+xml" href="https://7a6570.github.io/feeds/challenges.atom.xml" title="Categories Atom Feed">
+
+
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/pygments/native.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/style.css">
+
+
+<meta name="description" content="SANS Zurich 18 medium challenge write-up">
+</head>
+
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-4">
+          <a href="https://7a6570.github.io">
+            <img class="img-fluid" src=https://7a6570.github.io/images/zep.png alt="zep's blog">
+          </a>
+        </div>
+        <div class="col-sm-8">
+          <h1 class="title"><a href="https://7a6570.github.io">zep's blog</a></h1>
+          <p class="text-muted">follow me into the rabbit hole of ITsec</p>
+          <ul class="list-inline">
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/about.html">About</a></li>
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/contact.html">Contact</a></li>
+            <li class=" list-inline-item text-muted">|</li>
+            <li class="list-inline-item"><a class="fa fa-github" href="https://github.com/7a6570" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-feed" href="/feeds/all.atom.xml" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-twitter" href="https://twitter.com/7a6570" target="_blank"></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="container">
+      <h1>Write-up for medium challenge at SANS Zurich 18
+</h1>
+      <hr>
+<article class="article">
+  <header>
+    <ul class="list-inline">
+      <li class="list-inline-item text-muted" title="2018-05-03T22:01:38.103105+01:00">
+        <i class="fa fa-clock-o"></i>
+        Thu 03 May 2018
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-folder-open-o"></i>
+        <a href="https://7a6570.github.io/category/challenges.html">challenges</a>
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-files-o"></i>
+        <a href="https://7a6570.github.io/tag/challenge.html">#challenge</a>,         <a href="https://7a6570.github.io/tag/sans.html">#SANS</a>      </li>
+    </ul>
+  </header>
+  <div class="content">
+    <p>This is my write-up for the medium challenge at SANS Zurich 18. The challenges are no longer available at pastebin, but you can get them from my <a class="reference external" href="https://github.com/7a6570/challenges">git repository</a>:</p>
+<p>First let's download the challenge and check what's all about:</p>
+<div class="highlight"><pre><span></span>wget -q https://raw.githubusercontent.com/7a6570/challenges/master/sans_zurich_18/medium/medium_challenge.txt
+file medium_challenge.txt
+medium_challenge.txt: ASCII text, with CRLF line terminators
+</pre></div>
+<p>So it seems that this file has &quot;Windows style (CRLF)&quot; line endings, which consist of an &quot;carriage return&quot; and an &quot;line feed&quot; ASCII control character. Then we see that this file is mainly ASCII text, meaning that all bytes of this file lie in the ASCII printable region. Let's have a look at the file in vim:</p>
+<div class="highlight"><pre><span></span>N3q8ryccAAObDHmThDIAAAAAAAAjAAAAAAAAABHzhZ0AHhoKhu9K1oc2p1UGfYtgZZjK1zmxqdnQ
+n2mEIwUO9dwi8jR/ST7v9ozUa0iXvcn/Qxv2yZubFMKXX5u8ROJJCVZqEN7QPDuuUqqTTutU+5AB
+igvmTcKYEYXU9vdjX833vpxn0Cl/nCIIt2oOeBDr4Q3d0HbtxDrWnk4Ryw6t0mU8EJ+xcekxdqkO
+2R9ilbBhNJGyqpJLTr80d7ckcM9CEAzYpJ0zVdj/H6yygJNMThBjHjRuhHpm+Ak/C3dvQ1OaQSVW
+Nxre3AE3bIAitHxbbv/SiFslCIluGGCYm6+mBemIszldnmiEgK9egdXfNu5JMf0K3mcsc+lNmGym
+
+&lt;-- snip --&gt;
+</pre></div>
+<p>We see only chars from a-z, A-Z, 0-9, + and /. Smells like Base64. But wait: Above we have seen, that this file has &quot;Windows&quot; line endings. Linux tools don't like them, so let's first convert them to Unix / Linux endings:</p>
+<div class="highlight"><pre><span></span>sed -i <span class="s1">&#39;s|\r||g&#39;</span> medium_challenge.txt
+file medium_challenge.txt
+medium_challenge.txt: ASCII text
+</pre></div>
+<p>Looks better :-) We just removed the carriage return ASCII control char (CR), which is the first part of the &quot;Windows&quot; line ending. The seconds part is the line feed (LF) control sequence, which is the way line endings are marked in Unix and Linux. Let's decode the Base64 encoded file:</p>
+<div class="highlight"><pre><span></span>cat medium_challenge.txt <span class="p">|</span> base64 -d &gt; medium_challenge_decoded
+file medium_challenge_decoded
+medium_challenge_decoded: <span class="m">7</span>-zip archive data, version <span class="m">0</span>.3
+</pre></div>
+<p>So we were right. The file was a Base64 encoded 7z archive. Let's extract the archive and see what we will find:</p>
+<div class="highlight"><pre><span></span>7z x medium_challenge_decoded
+
+Scanning the drive <span class="k">for</span> archives:
+<span class="m">1</span> file, <span class="m">12999</span> bytes <span class="o">(</span><span class="m">13</span> KiB<span class="o">)</span>
+
+Extracting archive: medium_challenge_decoded
+--
+<span class="nv">Path</span> <span class="o">=</span> medium_challenge_decoded
+<span class="nv">Type</span> <span class="o">=</span> 7z
+Physical <span class="nv">Size</span> <span class="o">=</span> <span class="m">12999</span>
+Headers <span class="nv">Size</span> <span class="o">=</span> <span class="m">222</span>
+<span class="nv">Method</span> <span class="o">=</span> LZMA:23
+<span class="nv">Solid</span> <span class="o">=</span> +
+<span class="nv">Blocks</span> <span class="o">=</span> <span class="m">1</span>
+
+Everything is Ok
+
+Files: <span class="m">2</span>
+Size:       <span class="m">67194</span>
+Compressed: <span class="m">12999</span>
+
+ls
+crypto.js  index.html  medium_challenge_decoded  medium_challenge.txt
+</pre></div>
+<p>Interesting. We have two files: index.html and crypto.js. Let's first open index.html in a browser:</p>
+<img alt="index.html" src="https://7a6570.github.io/images/sans18_medium_index.png" />
+<p>We see some scrambled output, which is labeled with &quot;decrypted&quot;. Each time we refresh the page, the scrambled output changes. So this means, we're supposed to decrypt something to get our flag. Let's have a look at crypto.js. First of all, this file is quite big, 800 lines of javascript code. Looks like crypto stuff and is probably a crypto library. Let's move on and have a look at index.html:</p>
+<div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">--</span> <span class="na">snip</span> <span class="na">--</span><span class="p">&gt;</span>
+
+ <span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;crypto.js&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+ <span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+ <span class="kd">var</span> <span class="nx">_0xde32</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;\x6F\x6E\x6C\x6F\x61\x64&quot;</span><span class="p">,</span><span class="s2">&quot;\x65\x6E\x63\x6F\x64\x65\x48\x65\x78&quot;</span><span class="p">,</span><span class="s2">&quot;\x70\x72\x6F\x74\x6F\x74\x79\x70\x65&quot;</span><span class="p">,</span><span class="s2">&quot;\x6C\x65\x6E\x67\x74\x68&quot;</span><span class="p">,</span><span class="s2">&quot;\x63\x68\x61\x72\x43\x6F\x64\x65\x41\x74&quot;</span><span class="p">,</span><span class="s2">&quot;\x70\x75\x73\x68&quot;</span><span class="p">,</span><span class="s2">&quot;\x73\x69\x6E&quot;</span><span class="p">,</span><span class="s2">&quot;\x66\x6C\x6F\x6F\x72&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="s2">&quot;\x66\x72\x6F\x6D\x43\x68\x61\x72\x43\x6F\x64\x65&quot;</span><span class="p">,</span><span class="s2">&quot;\x6E\x6F\x77&quot;</span><span class="p">,</span><span class="s2">&quot;\x72\x6F\x75\x6E\x64&quot;</span><span class="p">,</span><span class="s2">&quot;\x6E\x30\x54\x5F\x4D\x79\x5F\x70\x61\x73\x73\x57\x30\x72\x44\x21&quot;</span><span class="p">,</span><span class="s2">&quot;\x62\x32\x64\x33\x63\x66\x35\x36\x37\x64\x35\x66\x34\x62\x37\x32\x66\x38\x62\x33\x65\x32\x39\x37\x65\x39\x33\x65\x35\x32\x66\x32\x66\x33\x66\x33\x63\x37\x32\x31\x32\x66\x38\x65\x30\x38\x34\x66\x33\x63\x38\x66\x30\x31\x63\x34\x61\x64\x66\x34\x39\x66\x66\x32\x64\x66\x35\x39\x38\x35\x37\x39\x36\x65\x64\x32\x38\x39\x62\x39\x39\x30\x32\x34\x66\x37\x39\x63\x34\x37\x34\x37\x62\x65\x66\x64\x31\x64\x66\x66\x38\x34\x33\x65\x32\x38\x34\x39\x36\x39\x61\x65\x35\x36\x65\x39\x31\x35\x64\x61\x63\x66\x66\x65\x36\x65\x66\x61\x63\x64\x65\x65\x38\x38\x31\x63\x30\x38\x32\x35\x34\x35\x62\x37\x63\x34\x32\x66\x63\x36\x64\x63\x64\x39\x66\x38\x31\x35\x61\x36\x62\x32\x30\x37\x63\x32\x30\x39\x38\x65\x34\x38\x34\x38\x30\x64\x62\x63\x39\x65\x66\x37\x34\x34\x63\x38\x33\x62\x31\x38\x63\x62\x39\x37\x39\x61\x35\x63\x39\x34\x34\x31\x38\x34\x61\x35\x33\x65\x30\x30\x64\x37\x30\x33\x65\x65\x64\x37\x63\x37\x38\x63\x64\x63\x36\x30\x61\x35\x35\x34\x38\x39&quot;</span><span class="p">,</span><span class="s2">&quot;\x74\x6F\x42\x79\x74\x65\x73&quot;</span><span class="p">,</span><span class="s2">&quot;\x68\x65\x78&quot;</span><span class="p">,</span><span class="s2">&quot;\x75\x74\x69\x6C\x73&quot;</span><span class="p">,</span><span class="s2">&quot;\x63\x74\x72&quot;</span><span class="p">,</span><span class="s2">&quot;\x4D\x6F\x64\x65\x4F\x66\x4F\x70\x65\x72\x61\x74\x69\x6F\x6E&quot;</span><span class="p">,</span><span class="s2">&quot;\x64\x65\x63\x72\x79\x70\x74&quot;</span><span class="p">,</span><span class="s2">&quot;\x66\x72\x6F\x6D\x42\x79\x74\x65\x73&quot;</span><span class="p">,</span><span class="s2">&quot;\x75\x74\x66\x38&quot;</span><span class="p">,</span><span class="s2">&quot;\x64\x65\x63\x72\x79\x70\x74\x65\x64&quot;</span><span class="p">,</span><span class="s2">&quot;\x67\x65\x74\x45\x6C\x65\x6D\x65\x6E\x74\x42\x79\x49\x64&quot;</span><span class="p">,</span><span class="s2">&quot;\x69\x6E\x6E\x65\x72\x48\x54\x4D\x4C&quot;</span><span class="p">,</span><span class="s2">&quot;\x74\x69\x6D\x65&quot;</span><span class="p">,</span><span class="s2">&quot;\x49\x74\x20\x68\x61\x73\x20\x62\x65\x65\x6E\x20&quot;</span><span class="p">,</span><span class="s2">&quot;\x20\x73\x65\x63\x6F\x6E\x64\x73\x20\x73\x69\x6E\x63\x65\x20\x74\x68\x65\x20\x65\x6E\x63\x72\x79\x70\x74\x69\x6F\x6E\x20\x66\x75\x6E\x63\x74\x69\x6F\x6E\x20\x6C\x61\x73\x74\x20\x72\x61\x6E\x2E&quot;</span><span class="p">];</span><span class="nb">window</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">=</span> <span class="kd">function</span><span class="p">(){</span><span class="nb">String</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">2</span><span class="p">]][</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">=</span> <span class="kd">function</span><span class="p">(){</span><span class="kd">var</span> <span class="nx">_0x35b4x1</span><span class="o">=</span><span class="p">[];</span><span class="k">for</span><span class="p">(</span><span class="kd">var</span> <span class="nx">_0x35b4x2</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="nx">_0x35b4x2</span><span class="o">&lt;</span> <span class="k">this</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">3</span><span class="p">]];</span><span class="o">++</span><span class="nx">_0x35b4x2</span><span class="p">){</span><span class="nx">_0x35b4x1</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">5</span><span class="p">]](</span><span class="k">this</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">4</span><span class="p">]](</span><span class="nx">_0x35b4x2</span><span class="p">))};</span><span class="k">return</span> <span class="nx">_0x35b4x1</span><span class="p">};</span><span class="kd">function</span> <span class="nx">_0x35b4x3</span><span class="p">(){</span><span class="kd">var</span> <span class="nx">_0x35b4x4</span><span class="o">=</span><span class="nb">Math</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">6</span><span class="p">]](</span><span class="nx">_0x35b4x9</span><span class="o">++</span><span class="p">)</span><span class="o">*</span> <span class="mi">10000</span><span class="p">;</span><span class="k">return</span> <span class="nx">_0x35b4x4</span><span class="o">-</span> <span class="nb">Math</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">7</span><span class="p">]](</span><span class="nx">_0x35b4x4</span><span class="p">)}</span><span class="kd">function</span> <span class="nx">_0x35b4x5</span><span class="p">(</span><span class="nx">_0x35b4x6</span><span class="p">,</span><span class="nx">_0x35b4x7</span><span class="p">){</span><span class="kd">var</span> <span class="nx">_0x35b4x8</span><span class="o">=</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span><span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="nx">_0x35b4x7</span><span class="p">){</span><span class="nx">_0x35b4x7</span><span class="o">=</span> <span class="mi">6</span><span class="p">};</span><span class="k">for</span><span class="p">(</span><span class="kd">var</span> <span class="nx">_0x35b4x2</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="nx">_0x35b4x2</span><span class="o">&lt;</span> <span class="nx">_0x35b4x6</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">3</span><span class="p">]];</span><span class="o">++</span><span class="nx">_0x35b4x2</span><span class="p">){</span><span class="nx">_0x35b4x8</span><span class="o">+=</span> <span class="nb">String</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">9</span><span class="p">]](</span><span class="nx">_0x35b4x7</span><span class="o">^</span> <span class="nx">_0x35b4x6</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">4</span><span class="p">]](</span><span class="nx">_0x35b4x2</span><span class="p">))};</span><span class="k">return</span> <span class="nx">_0x35b4x8</span><span class="p">}</span><span class="kd">var</span> <span class="nx">_0x35b4x9</span><span class="o">=</span><span class="nb">Date</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">10</span><span class="p">]]();</span><span class="kd">var</span> <span class="nx">_0x35b4x3</span><span class="o">=</span><span class="nb">Math</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">11</span><span class="p">]](</span><span class="nx">_0x35b4x3</span><span class="p">()</span><span class="o">*</span> <span class="mi">100</span><span class="p">);</span><span class="kd">var</span> <span class="nx">_0x35b4x7</span><span class="o">=</span><span class="nx">_0x35b4x5</span><span class="p">(</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">12</span><span class="p">],</span><span class="nx">_0x35b4x3</span><span class="p">)[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">1</span><span class="p">]]();</span><span class="kd">var</span> <span class="nx">_0x35b4xa</span><span class="o">=</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">13</span><span class="p">];</span><span class="kd">var</span> <span class="nx">_0x35b4xb</span><span class="o">=</span><span class="nx">aesjs</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">16</span><span class="p">]][</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">15</span><span class="p">]][</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">14</span><span class="p">]](</span><span class="nx">_0x35b4xa</span><span class="p">);</span><span class="kd">var</span> <span class="nx">_0x35b4xc</span><span class="o">=</span> <span class="k">new</span> <span class="nx">aesjs</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">18</span><span class="p">]][</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">17</span><span class="p">]](</span><span class="nx">_0x35b4x7</span><span class="p">);</span><span class="kd">var</span> <span class="nx">_0x35b4xd</span><span class="o">=</span><span class="nx">_0x35b4xc</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">19</span><span class="p">]](</span><span class="nx">_0x35b4xb</span><span class="p">);</span><span class="kd">var</span> <span class="nx">_0x35b4xe</span><span class="o">=</span><span class="nx">aesjs</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">16</span><span class="p">]][</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">21</span><span class="p">]][</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">20</span><span class="p">]](</span><span class="nx">_0x35b4xd</span><span class="p">);</span><span class="kd">var</span> <span class="nx">_0x35b4xf</span><span class="o">=</span><span class="nb">document</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">23</span><span class="p">]](</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">22</span><span class="p">]);</span><span class="nx">_0x35b4xf</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">24</span><span class="p">]]</span><span class="o">+=</span> <span class="nx">_0x35b4xe</span><span class="p">;</span><span class="kd">var</span> <span class="nx">_0x35b4xf</span><span class="o">=</span><span class="nb">document</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">23</span><span class="p">]](</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">22</span><span class="p">]);</span><span class="nx">_0x35b4xf</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">24</span><span class="p">]]</span><span class="o">+=</span> <span class="nx">_0x35b4xe</span><span class="p">;</span><span class="kd">var</span> <span class="nx">_0x35b4x10</span><span class="o">=</span><span class="nb">document</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">23</span><span class="p">]](</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">25</span><span class="p">]);</span><span class="nx">_0x35b4x10</span><span class="p">[</span><span class="nx">_0xde32</span><span class="p">[</span><span class="mi">24</span><span class="p">]]</span><span class="o">+=</span> <span class="nx">_0xde32</span><span class="p">[</span><span class="mi">26</span><span class="p">]</span><span class="o">+</span> <span class="p">(</span><span class="nx">_0x35b4x9</span><span class="o">-</span> <span class="mi">1522951291439</span><span class="p">).</span><span class="nx">toString</span><span class="p">()</span><span class="o">+</span> <span class="nx">_0xde32</span><span class="p">[</span><span class="mi">27</span><span class="p">]}</span>
+
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+
+<span class="p">&lt;</span><span class="nt">--</span> <span class="na">snip</span> <span class="na">--</span><span class="p">&gt;</span>
+</pre></div>
+<p>Now it's starting to get interesting. We see some obfuscated javascript code. A quick way to auto deobfuscate is <a class="reference external" href="http://jsnice.org/">jsnice.org</a>. Just copy the obfuscated javascript code and let jsnice do the heavy work. Jsnice was able to break up the long string into meaningfull blocks. It also added usefull type information, but some sort of obfuscation is still there: At the top, the array _0xde32 is defined. A lot of object attributes are resolved by getting their name from this array. So we have first to substitute all references made to this array, which leads to this code:</p>
+<div class="highlight"><pre><span></span><span class="lineno">  0 </span><span class="s1">&#39;use strict&#39;</span><span class="p">;</span>
+<span class="lineno">  1 </span><span class="cm">/** @type {!Array} */</span>
+<span class="lineno">  2 </span><span class="kd">var</span> <span class="nx">_0xde32</span> <span class="o">=</span> <span class="p">[</span>
+<span class="lineno">  3 </span>
+<span class="lineno">  4 </span><span class="s2">&quot;onload&quot;</span><span class="p">,</span>               <span class="c1">// 0</span>
+<span class="lineno">  5 </span><span class="s2">&quot;encodeHex&quot;</span><span class="p">,</span>            <span class="c1">// 1</span>
+<span class="lineno">  6 </span><span class="s2">&quot;prototype&quot;</span><span class="p">,</span>            <span class="c1">// 2</span>
+<span class="lineno">  7 </span><span class="s2">&quot;length&quot;</span><span class="p">,</span>               <span class="c1">// 3</span>
+<span class="lineno">  8 </span><span class="s2">&quot;charCodeAt&quot;</span><span class="p">,</span>           <span class="c1">// 4</span>
+<span class="lineno">  9 </span><span class="s2">&quot;push&quot;</span><span class="p">,</span>                 <span class="c1">// 5</span>
+<span class="lineno"> 10 </span><span class="s2">&quot;sin&quot;</span><span class="p">,</span>                  <span class="c1">// 6</span>
+<span class="lineno"> 11 </span><span class="s2">&quot;floor&quot;</span><span class="p">,</span>                <span class="c1">// 7</span>
+<span class="lineno"> 12 </span><span class="s2">&quot;&quot;</span><span class="p">,</span>                     <span class="c1">// 8</span>
+<span class="lineno"> 13 </span><span class="s2">&quot;fromCharCode&quot;</span><span class="p">,</span>         <span class="c1">// 9</span>
+<span class="lineno"> 14 </span><span class="s2">&quot;now&quot;</span><span class="p">,</span>                  <span class="c1">// 10</span>
+<span class="lineno"> 15 </span><span class="s2">&quot;round&quot;</span><span class="p">,</span>                <span class="c1">// 11</span>
+<span class="lineno"> 16 </span><span class="s2">&quot;n0T_My_passW0rD!&quot;</span><span class="p">,</span>     <span class="c1">// 12</span>
+<span class="lineno"> 17 </span><span class="s2">&quot;b2d3cf567d5f4b72f8b3e297e93e52f2f3f3c7212f8e084f3c8f01c4adf49ff2df5985796ed289b99024f79c4747befd1dff843e284969ae56e915dacffe6efacdee881c082545b7c42fc6dcd9f815a6b207c2098e48480dbc9ef744c83b18cb979a5c944184a53e00d703eed7c78cdc60a55489&quot;</span><span class="p">,</span> <span class="c1">// 13</span>
+<span class="lineno"> 18 </span><span class="s2">&quot;toBytes&quot;</span><span class="p">,</span>              <span class="c1">// 14</span>
+<span class="lineno"> 19 </span><span class="s2">&quot;hex&quot;</span><span class="p">,</span>                  <span class="c1">// 15</span>
+<span class="lineno"> 20 </span><span class="s2">&quot;utils&quot;</span><span class="p">,</span>                <span class="c1">// 16</span>
+<span class="lineno"> 21 </span><span class="s2">&quot;ctr&quot;</span><span class="p">,</span>                  <span class="c1">// 17</span>
+<span class="lineno"> 22 </span><span class="s2">&quot;ModeOfOperation&quot;</span><span class="p">,</span>      <span class="c1">// 18</span>
+<span class="lineno"> 23 </span><span class="s2">&quot;decrypt&quot;</span><span class="p">,</span>              <span class="c1">// 19</span>
+<span class="lineno"> 24 </span><span class="s2">&quot;fromBytes&quot;</span><span class="p">,</span>            <span class="c1">// 20</span>
+<span class="lineno"> 25 </span><span class="s2">&quot;utf8&quot;</span><span class="p">,</span>                 <span class="c1">// 21</span>
+<span class="lineno"> 26 </span><span class="s2">&quot;decrypted&quot;</span><span class="p">,</span>            <span class="c1">// 22</span>
+<span class="lineno"> 27 </span><span class="s2">&quot;getElementById&quot;</span><span class="p">,</span>       <span class="c1">// 23</span>
+<span class="lineno"> 28 </span><span class="s2">&quot;innerHTML&quot;</span><span class="p">,</span>            <span class="c1">// 24</span>
+<span class="lineno"> 29 </span><span class="s2">&quot;time&quot;</span><span class="p">,</span>                 <span class="c1">// 25</span>
+<span class="lineno"> 30 </span><span class="s2">&quot;It has been &quot;</span><span class="p">,</span>
+<span class="lineno"> 31 </span><span class="s2">&quot; seconds since the encryption function last ran.&quot;</span><span class="p">];</span>
+<span class="lineno"> 32 </span>
+<span class="lineno"> 33 </span>
+<span class="lineno"> 34 </span><span class="cm">/**</span>
+<span class="lineno"> 35 </span><span class="cm"> * @return {undefined}</span>
+<span class="lineno"> 36 </span><span class="cm"> */</span>
+<span class="lineno"> 37 </span><span class="nb">window</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+<span class="lineno"> 38 </span>  <span class="cm">/**</span>
+<span class="lineno"> 39 </span><span class="cm">   * @return {?}</span>
+<span class="lineno"> 40 </span><span class="cm">   */</span>
+<span class="lineno"> 41 </span>  <span class="kd">function</span> <span class="nx">rev</span><span class="p">()</span> <span class="p">{</span>
+<span class="lineno"> 42 </span>    <span class="cm">/** @type {number} */</span>
+<span class="lineno"> 43 </span>    <span class="kd">var</span> <span class="nx">value</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">sin</span><span class="p">(</span><span class="nx">lastResi</span><span class="o">++</span><span class="p">)</span> <span class="o">*</span> <span class="mi">10000</span><span class="p">;</span>
+<span class="lineno"> 44 </span>    <span class="k">return</span> <span class="nx">value</span> <span class="o">-</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">foor</span><span class="p">(</span><span class="nx">value</span><span class="p">);</span>
+<span class="lineno"> 45 </span>  <span class="p">}</span>
+<span class="lineno"> 46 </span>  <span class="cm">/**</span>
+<span class="lineno"> 47 </span><span class="cm">   * @param {?} arr</span>
+<span class="lineno"> 48 </span><span class="cm">   * @param {number} reverse</span>
+<span class="lineno"> 49 </span><span class="cm">   * @return {?}</span>
+<span class="lineno"> 50 </span><span class="cm">   */</span>
+<span class="lineno"> 51 </span>  <span class="kd">function</span> <span class="nx">set</span><span class="p">(</span><span class="nx">arr</span><span class="p">,</span> <span class="nx">reverse</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno"> 52 </span>    <span class="kd">var</span> <span class="nx">toSave</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+<span class="lineno"> 53 </span>    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">reverse</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno"> 54 </span>      <span class="cm">/** @type {number} */</span>
+<span class="lineno"> 55 </span>      <span class="nx">reverse</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+<span class="lineno"> 56 </span>    <span class="p">}</span>
+<span class="lineno"> 57 </span>    <span class="cm">/** @type {number} */</span>
+<span class="lineno"> 58 </span>    <span class="kd">var</span> <span class="nx">value</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="lineno"> 59 </span>    <span class="k">for</span> <span class="p">(;</span> <span class="nx">value</span> <span class="o">&lt;</span> <span class="nx">arr</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="o">++</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno"> 60 </span>      <span class="nx">toSave</span> <span class="o">=</span> <span class="nx">toSave</span> <span class="o">+</span> <span class="nb">String</span><span class="p">.</span><span class="nx">fromCharCode</span><span class="p">(</span><span class="nx">reverse</span> <span class="o">^</span> <span class="nx">arr</span><span class="p">.</span><span class="nx">charCodeAt</span><span class="p">(</span><span class="nx">value</span><span class="p">));</span>
+<span class="lineno"> 61 </span>    <span class="p">}</span>
+<span class="lineno"> 62 </span>    <span class="k">return</span> <span class="nx">toSave</span><span class="p">;</span>
+<span class="lineno"> 63 </span>  <span class="p">}</span>
+<span class="lineno"> 64 </span>
+<span class="lineno"> 65 </span><span class="cm">/**</span>
+<span class="lineno"> 66 </span><span class="cm">   * @return {?}</span>
+<span class="lineno"> 67 </span><span class="cm">   */</span>
+<span class="lineno"> 68 </span>  <span class="nb">String</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">encodeHex</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+<span class="lineno"> 69 </span>
+<span class="lineno"> 70 </span>    <span class="cm">/** @type {!Array} */</span>
+<span class="lineno"> 71 </span>    <span class="kd">var</span> <span class="nx">harderTypes</span> <span class="o">=</span> <span class="p">[];</span>
+<span class="lineno"> 72 </span>    <span class="cm">/** @type {number} */</span>
+<span class="lineno"> 73 </span>    <span class="kd">var</span> <span class="nx">item</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="lineno"> 74 </span>
+<span class="lineno"> 75 </span>  <span class="k">for</span> <span class="p">(;</span> <span class="nx">item</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="o">++</span><span class="nx">item</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno"> 76 </span>      <span class="nx">harderTypes</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">charCodeAt</span><span class="p">(</span><span class="nx">item</span><span class="p">));</span>
+<span class="lineno"> 77 </span>    <span class="p">}</span>
+<span class="lineno"> 78 </span>    <span class="k">return</span> <span class="nx">harderTypes</span><span class="p">;</span>
+<span class="lineno"> 79 </span>  <span class="p">};</span>
+<span class="lineno"> 80 </span>
+<span class="lineno"> 81 </span>
+<span class="lineno"> 82 </span>  <span class="kd">var</span> <span class="nx">lastResi</span> <span class="o">=</span> <span class="nb">Date</span><span class="p">.</span><span class="nx">now</span><span class="p">();</span>
+<span class="lineno"> 83 </span>
+<span class="lineno"> 84 </span>  <span class="nx">rev</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">round</span><span class="p">(</span><span class="nx">rev</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span><span class="p">);</span>
+<span class="lineno"> 85 </span>
+<span class="lineno"> 86 </span>  <span class="kd">var</span> <span class="nx">scriptPubKey</span> <span class="o">=</span> <span class="nx">set</span><span class="p">(</span><span class="s2">&quot;n0T_My_passW0rD!&quot;</span><span class="p">,</span> <span class="nx">rev</span><span class="p">).</span><span class="nx">encodeHex</span><span class="p">();</span>
+<span class="lineno"> 87 </span>  <span class="kd">var</span> <span class="nx">data_as_string</span> <span class="o">=</span>
+<span class="lineno"> 88 </span>  <span class="s2">&quot;b2d3cf567d5f4b72f8b3e297e93e52f2f3f3c7212f8e084f3c8f01c4adf49ff2df5985796ed289b99024f79c4747befd1dff843e284969ae56e915dacffe6efacdee881c082545b7c42fc6dcd9f815a6b207c2098e48480dbc9ef744c83b18cb979a5c944184a53e00d703eed7c78cdc60a55489&quot;</span><span class="p">;</span>
+<span class="lineno"> 89 </span>
+<span class="lineno"> 90 </span>  <span class="kd">var</span> <span class="nx">data</span> <span class="o">=</span> <span class="nx">aesjs</span><span class="p">.</span><span class="nx">utils</span><span class="p">.</span><span class="nx">hex</span><span class="p">.</span><span class="nx">toBytes</span><span class="p">(</span><span class="nx">data_as_string</span><span class="p">);</span>
+<span class="lineno"> 91 </span>  <span class="kd">var</span> <span class="nx">command_codes</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">aesjs</span><span class="p">.</span><span class="nx">ModeOfOperation</span><span class="p">.</span><span class="nx">ctr</span><span class="p">(</span><span class="nx">scriptPubKey</span><span class="p">);</span>
+<span class="lineno"> 92 </span>  <span class="kd">var</span> <span class="nx">rightContent</span> <span class="o">=</span> <span class="nx">command_codes</span><span class="p">.</span><span class="nx">decrypt</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
+<span class="lineno"> 93 </span>
+<span class="lineno"> 94 </span>  <span class="kd">var</span> <span class="nx">content</span> <span class="o">=</span> <span class="nx">aesjs</span><span class="p">.</span><span class="nx">utils</span><span class="p">.</span><span class="nx">utf8</span><span class="p">.</span><span class="nx">fromBytes</span><span class="p">(</span><span class="nx">rightContent</span><span class="p">);</span>
+<span class="lineno"> 95 </span>
+<span class="lineno"> 96 </span>
+<span class="lineno"> 97 </span> <span class="kd">var</span> <span class="nx">mergedLocationContent</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">](</span><span class="s2">&quot;decrypted&quot;</span><span class="p">);</span>
+<span class="lineno"> 98 </span>  <span class="nx">mergedLocationContent</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">+=</span> <span class="nx">content</span><span class="p">;</span>
+<span class="lineno"> 99 </span>  <span class="nx">mergedLocationContent</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="nx">decrypted</span><span class="p">);</span>
+<span class="lineno">100 </span>  <span class="nx">mergedLocationContent</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">+=</span> <span class="nx">content</span><span class="p">;</span>
+<span class="lineno">101 </span>
+<span class="lineno">102 </span>  <span class="kd">var</span> <span class="nx">_0x35b4x10</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">);</span>
+<span class="lineno">103 </span>
+<span class="lineno">104 </span>  <span class="nx">_0x35b4x10</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">+=</span> <span class="s2">&quot;It has been&quot;</span> <span class="o">+</span> <span class="p">(</span><span class="nx">lastResi</span> <span class="o">-</span>
+<span class="lineno">105 </span>  <span class="mi">1522951291439</span><span class="p">).</span><span class="nx">toString</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;seconds since the encryption function last ran&quot;</span><span class="p">;</span>
+<span class="lineno">106 </span><span class="p">};</span>
+</pre></div>
+<p>The interesting part starts at line 90: data_as_string is converted to bytes by an util method from aesjs. So aesjs is the crypto library we have seen earlier. It seems data_as_string contains the encrypted flag. At line 91 we see that AES in counter block mode is used. Let's check the documentation of aesjs to understand the function call <em>aesjs.ModeOfOperation.ctr(scriptPubKey)</em>.</p>
+<p>We find <a class="reference external" href="https://github.com/ricmoo/aes-js">aesjs</a> at github:</p>
+<pre class="literal-block">
+// Convert text to bytes
+var text = 'Text may be any length you wish, no padding is required.';
+var textBytes = aesjs.utils.utf8.toBytes(text);
+
+// The counter is optional, and if omitted will begin at 1
+var aesCtr = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(5));
+var encryptedBytes = aesCtr.encrypt(textBytes);
+</pre>
+<p>So <em>aesjs.ModeOfOperation.ctr</em> returns a new aesjs object. The first argument is the key, the seconds argument is the used counter, if omitted the counter starts at 1. In our case, the key is returned by the function <em>set</em> (line 86). This function takes two arguments: The first is <em>&quot;n0T_My_passW0rD!&quot;</em> and the second is a rounded value returned by the <em>rev</em> function. Let's have a look at the <em>set</em> function:</p>
+<div class="highlight"><pre><span></span><span class="lineno"> 0 </span> <span class="cm">/**</span>
+<span class="lineno"> 1 </span><span class="cm">  * @param {?} arr</span>
+<span class="lineno"> 2 </span><span class="cm">  * @param {number} reverse</span>
+<span class="lineno"> 3 </span><span class="cm">  * @return {?}</span>
+<span class="lineno"> 4 </span><span class="cm">  */</span>
+<span class="lineno"> 5 </span> <span class="kd">function</span> <span class="nx">set</span><span class="p">(</span><span class="nx">arr</span><span class="p">,</span> <span class="nx">reverse</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno"> 6 </span>   <span class="kd">var</span> <span class="nx">toSave</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+<span class="lineno"> 7 </span>   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">reverse</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno"> 8 </span>     <span class="cm">/** @type {number} */</span>
+<span class="lineno"> 9 </span>     <span class="nx">reverse</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+<span class="lineno">10 </span>   <span class="p">}</span>
+<span class="lineno">11 </span>   <span class="cm">/** @type {number} */</span>
+<span class="lineno">12 </span>   <span class="kd">var</span> <span class="nx">value</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="lineno">13 </span>   <span class="k">for</span> <span class="p">(;</span> <span class="nx">value</span> <span class="o">&lt;</span> <span class="nx">arr</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="o">++</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">14 </span>     <span class="nx">toSave</span> <span class="o">=</span> <span class="nx">toSave</span> <span class="o">+</span> <span class="nb">String</span><span class="p">.</span><span class="nx">fromCharCode</span><span class="p">(</span><span class="nx">reverse</span> <span class="o">^</span> <span class="nx">arr</span><span class="p">.</span><span class="nx">charCodeAt</span><span class="p">(</span><span class="nx">value</span><span class="p">));</span>
+<span class="lineno">15 </span>   <span class="p">}</span>
+<span class="lineno">16 </span>   <span class="k">return</span> <span class="nx">toSave</span><span class="p">;</span>
+<span class="lineno">17 </span> <span class="p">}</span>
+</pre></div>
+<p>This function loops over every character of <em>&quot;n0T_My_passW0rD!&quot;</em> and xors it with the value <em>reverse</em> (line 13-14). This means, that <em>&quot;n0T_My_passW0rD!&quot;</em> is the xor'd key to decrypt data_as_string. The key is xor'd with an unknown value so that's more difficult to get the real key, which is used to decrypt the AES cipher text. We don't know the value which is used to xor <em>&quot;n0T_My_passW0rD!&quot;</em> with, but we can say something about its size: Since the size of the AES key must be the same after it has been xor'd and the key is plain ASCII and 16 bytes long, we can deduce that the xor key must have the size of one byte. This gives only <em>256</em> different xor keys, which could have been used to encrypt the needed AES key.:</p>
+<pre class="literal-block">
+ASCII char:     n  0  T  _  M  y  _  p  a  s  s  W  0  r  D  !
+value in hex:   6e 30 54 5f 4d 79 5f 70 61 73 73 57 30 72 44 21
+
+size = 16 bytes
+</pre>
+<div class="highlight"><pre><span></span><span class="lineno">0 </span><span class="k">for</span> <span class="p">(;</span> <span class="nx">value</span> <span class="o">&lt;</span> <span class="nx">arr</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="o">++</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">1 </span>          <span class="nx">toSave</span> <span class="o">=</span> <span class="nx">toSave</span> <span class="o">+</span> <span class="nb">String</span><span class="p">.</span><span class="nx">fromCharCode</span><span class="p">(</span><span class="nx">reverse</span> <span class="o">^</span> <span class="nx">arr</span><span class="p">.</span><span class="nx">charCodeAt</span><span class="p">(</span><span class="nx">value</span><span class="p">));</span>
+<span class="lineno">2 </span>     <span class="p">}</span>
+</pre></div>
+<p>Furthermore the function <em>set</em> loops over each character and xors each character individually. The functions <em>charCodeAt</em> and <em>fromCharCode</em> would support Unicode, but then this would change the size of the AES key. (Ever tried to xor 255 with say 400 ? This no longer fits into one byte)</p>
+<p>Lets summarize what we have so far:</p>
+<ul class="simple">
+<li>An encrypted AES cipher text <em>data_as_string</em></li>
+<li>An xor encrypted AES key: <em>&quot;n0T_My_passW0rD!&quot;</em></li>
+<li>Cipher: AES 128 with counter mode</li>
+<li>The xor key used to encrypt the AES key is only one byte in size</li>
+</ul>
+<p>So let's just brute-force the value for the xor key, the key space is very small, there are only 256 different values. To do this, we'll just xor the AES key with every value from 0 to 255. This will give 256 different AES keys, of which only one is valid. Then just decrypt the cipher text with every of these 256 keys. But how do we know, which of the resulting 256 decrypted cipher text is the right ? We know that the decrypted cipher text must be valid UTF-8, since the decrypted data is decoded as UTF-8 by the function <em>aesjs.utils.utf8.fromBytes(rightContent)</em> (line 94). We can therefore just try to decode each of these 256 results as UTF-8 and see which ones are valid.</p>
+<p>To decrypt the cipher text, we'll use the <em>pycrypto</em> python library.</p>
+<div class="highlight"><pre><span></span><span class="lineno"> 0 </span> <span class="c1">#!/usr/bin/python</span>
+<span class="lineno"> 1 </span>
+<span class="lineno"> 2 </span> <span class="kn">from</span> <span class="nn">Crypto.Cipher</span> <span class="kn">import</span> <span class="n">AES</span>
+<span class="lineno"> 3 </span> <span class="kn">from</span> <span class="nn">Crypto.Util</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="lineno"> 4 </span>
+<span class="lineno"> 5 </span>
+<span class="lineno"> 6 </span> <span class="n">encrypted_aes_key</span><span class="o">=</span><span class="s1">&#39;n0T_My_passW0rD!&#39;</span>
+<span class="lineno"> 7 </span> <span class="n">ciphertext</span><span class="o">=</span><span class="s1">&#39;b2d3cf567d5f4b72f8b3e297e93e52f2f3f3c7212f8e084f3c8f01c4adf49ff2df5985796ed289b99024f79c4747befd1dff843e284969ae56e915dacffe6efacdee881c082545b7c42fc6dcd9f815a6b207c2098e48480dbc9ef744c83b18cb979a5c944184a53e00d703eed7c78cdc60a55489&#39;</span>
+<span class="lineno"> 8 </span>
+<span class="lineno"> 9 </span>
+<span class="lineno">10 </span> <span class="n">cipherbytes</span> <span class="o">=</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">ciphertext</span><span class="p">)</span>
+<span class="lineno">11 </span>
+<span class="lineno">12 </span> <span class="n">keys</span><span class="o">=</span><span class="p">[]</span>
+<span class="lineno">13 </span>
+<span class="lineno">14 </span> <span class="k">for</span> <span class="n">xor_key</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">256</span><span class="p">):</span>
+<span class="lineno">15 </span>
+<span class="lineno">16 </span>     <span class="n">key</span><span class="o">=</span><span class="nb">bytearray</span><span class="p">()</span>
+<span class="lineno">17 </span>
+<span class="lineno">18 </span>     <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">encrypted_aes_key</span><span class="p">:</span>
+<span class="lineno">19 </span>
+<span class="lineno">20 </span>             <span class="n">key</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">^</span> <span class="n">xor_key</span><span class="p">)</span>
+<span class="lineno">21 </span>
+<span class="lineno">22 </span>     <span class="n">keys</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">bytes</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">xor_key</span><span class="p">))</span>
+<span class="lineno">23 </span>
+<span class="lineno">24 </span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">xor_key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+<span class="lineno">25 </span>
+<span class="lineno">26 </span>     <span class="n">ctr</span> <span class="o">=</span> <span class="n">Counter</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="mi">128</span><span class="p">)</span>
+<span class="lineno">27 </span>     <span class="n">cipher</span> <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">AES</span><span class="o">.</span><span class="n">MODE_CTR</span><span class="p">,</span> <span class="n">counter</span><span class="o">=</span> <span class="n">ctr</span><span class="p">)</span>
+<span class="lineno">28 </span>     <span class="n">r</span><span class="o">=</span><span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">cipherbytes</span><span class="p">)</span>
+<span class="lineno">29 </span>
+<span class="lineno">30 </span>     <span class="k">try</span><span class="p">:</span>
+<span class="lineno">31 </span>         <span class="k">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+<span class="lineno">32 </span>     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="lineno">33 </span>         <span class="k">pass</span>
+</pre></div>
+<p>This gives us right away the searched flag:</p>
+<div class="highlight"><pre><span></span>./decrypt.py
+This is some data that I am totally encrypting in a very secure manner. Also the flag is: notReallyVeryRandomNowIsIt
+</pre></div>
+<p>One important point to mention: the Counter object <em>ctr</em> is stateful, meaning that it must be instanced seperately for each key (line 26).</p>
+<p>You can find the script <a class="reference external" href="https://github.com/7a6570/challenges/tree/master/sans_zurich_18/medium">here</a>:</p>
+
+  </div>
+</article>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+       <ul class="col-sm-6 list-inline">
+          <li class="list-inline-item"><a href="https://7a6570.github.io/archives.html">Archives</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/categories.html">Categories</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/tags.html">Tags</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>

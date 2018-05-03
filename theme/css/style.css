@@ -45,6 +45,11 @@ hr {
   margin-bottom: 1rem;
 }
 
+img {
+	padding-bottom: 10px;
+}
+
+
 .header .title {
   font-weight: bold;
   margin-bottom: 1rem;

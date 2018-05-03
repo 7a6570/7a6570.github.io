@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>zep's blog</title><link href="https://7a6570.github.io/" rel="alternate"></link><link href="https://7a6570.github.io/feeds/all.atom.xml" rel="self"></link><id>https://7a6570.github.io/</id><updated>2018-05-03T22:01:38+01:00</updated><entry><title>Write-up for medium challenge at SANS Zurich 18</title><link href="https://7a6570.github.io/write-up-for-medium-challenge-at-sans-zurich-18.html" rel="alternate"></link><published>2018-05-03T22:01:38+01:00</published><updated>2018-05-03T22:01:38+01:00</updated><author><name>zep</name></author><id>tag:7a6570.github.io,2018-05-03:/write-up-for-medium-challenge-at-sans-zurich-18.html</id><summary type="html">&lt;p class="first last"&gt;SANS Zurich 18 medium challenge write-up&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>zep's blog - challenges</title><link href="https://7a6570.github.io/" rel="alternate"></link><link href="https://7a6570.github.io/feeds/challenges.atom.xml" rel="self"></link><id>https://7a6570.github.io/</id><updated>2018-05-03T22:01:38+01:00</updated><entry><title>Write-up for medium challenge at SANS Zurich 18</title><link href="https://7a6570.github.io/write-up-for-medium-challenge-at-sans-zurich-18.html" rel="alternate"></link><published>2018-05-03T22:01:38+01:00</published><updated>2018-05-03T22:01:38+01:00</updated><author><name>zep</name></author><id>tag:7a6570.github.io,2018-05-03:/write-up-for-medium-challenge-at-sans-zurich-18.html</id><summary type="html">&lt;p class="first last"&gt;SANS Zurich 18 medium challenge write-up&lt;/p&gt;
 </summary><content type="html">&lt;p&gt;This is my write-up for the medium challenge at SANS Zurich 18. The challenges are no longer available at pastebin, but you can get them from my &lt;a class="reference external" href="https://github.com/7a6570/challenges"&gt;git repository&lt;/a&gt;:&lt;/p&gt;
 &lt;p&gt;First let's download the challenge and check what's all about:&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;wget -q https://raw.githubusercontent.com/7a6570/challenges/master/sans_zurich_18/medium/medium_challenge.txt
@@ -265,67 +265,4 @@ This is some data that I am totally encrypting in a very secure manner. Also the
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;One important point to mention: the Counter object &lt;em&gt;ctr&lt;/em&gt; is stateful, meaning that it must be instanced seperately for each key (line 26).&lt;/p&gt;
 &lt;p&gt;You can find the script &lt;a class="reference external" href="https://github.com/7a6570/challenges/tree/master/sans_zurich_18/medium"&gt;here&lt;/a&gt;:&lt;/p&gt;
-</content><category term="challenge"></category><category term="SANS"></category></entry><entry><title>Apparmor profile for Virtualbox</title><link href="https://7a6570.github.io/apparmor-profile-for-virtualbox.html" rel="alternate"></link><published>2018-01-26T13:01:56+00:00</published><updated>2018-01-26T13:01:56+00:00</updated><author><name>zep</name></author><id>tag:7a6570.github.io,2018-01-26:/apparmor-profile-for-virtualbox.html</id><summary type="html">&lt;p class="first last"&gt;custom apparmor profile for Virtualbox&lt;/p&gt;
-</summary><content type="html">&lt;p&gt;I recently switched from KVM / libvirt to Virtualbox for malware analysis due to various reasons. First of all, I was sick of the buggy console output provided by SPICE &lt;a class="footnote-reference" href="#id3" id="id1"&gt;[1]&lt;/a&gt;. I often use IDA running inside of an offline VM, therefore a good quality VM console is important. Virtualbox offers this, apart of some unpleasant things like separate kernel modules, the need for the 'extension pack' if some extended features are wanted and of course it's owned by Oracle...&lt;/p&gt;
-&lt;p&gt;From a security point of view, the separate kernel modules are an other nasty thing. To make a possible VM escape harder, it makes sense to use some sort of MAC &lt;a class="footnote-reference" href="#id4" id="id2"&gt;[2]&lt;/a&gt; to confine all Virtualbox processes. A focused attacker will anyway try to target directly the kernel and maybe the needed VirtualBox kernel modules.. But an other layer of defense is never wrong ;-)&lt;/p&gt;
-&lt;p&gt;In this article, I'll show how to create a custom Apparmor profile for Virtualbox.&lt;/p&gt;
-&lt;p&gt;First we're using aa-genprof to easily generate a basic profile skeleton. aa-genprof will then write a mark to syslog and set the new profile to complain mode. Now the program to profile can be executed and all access attempts will be logged to /var/log/audit.log ( this location actually depends on the used configuration ).&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# create basic profile and set to complain mode&lt;/span&gt;
-aa-genprof -d /etc/apparmor.d /usr/bin/VirtualBox
-
-&lt;span class="c1"&gt;# execute programm in different shell&lt;/span&gt;
-/usr/bin/VirtualBox
-
-&lt;span class="c1"&gt;# scan logs, hit S&lt;/span&gt;
-&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;The generated draft profile is not really useful at the moment, as it seems not all actions are logged in complain mode. We therefore set the profile to enforce mode:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# set to enforce mode&lt;/span&gt;
-aa-enforce /usr/lib64/virtualbox/VirtualBox
-&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;Now all actions actions are logged and we can use aa-logprof to refine the profile accordingly. aa-logprof will ask you how to handle certain access attempts by the confined program. Such a question may look like this:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;Profile:  /usr/lib64/virtualbox/VirtualBox
-Path:     /home/zep/.VirtualBox/selectorwindow.log
-Old Mode: r
-New Mode: owner rw
-Severity: &lt;span class="m"&gt;6&lt;/span&gt;
-
- &lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt; - owner /home/*/.VirtualBox/selectorwindow.log rw,&lt;span class="o"&gt;]&lt;/span&gt;
-  &lt;span class="m"&gt;2&lt;/span&gt; - owner /home/zep/.VirtualBox/** rw,
-  &lt;span class="m"&gt;3&lt;/span&gt; - owner /home/zep/.VirtualBox/selectorwindow.log rw,
-&lt;span class="o"&gt;(&lt;/span&gt;A&lt;span class="o"&gt;)&lt;/span&gt;llow / &lt;span class="o"&gt;[(&lt;/span&gt;D&lt;span class="o"&gt;)&lt;/span&gt;eny&lt;span class="o"&gt;]&lt;/span&gt; / &lt;span class="o"&gt;(&lt;/span&gt;I&lt;span class="o"&gt;)&lt;/span&gt;gnore / &lt;span class="o"&gt;(&lt;/span&gt;G&lt;span class="o"&gt;)&lt;/span&gt;lob / Glob with &lt;span class="o"&gt;(&lt;/span&gt;E&lt;span class="o"&gt;)&lt;/span&gt;xtension / &lt;span class="o"&gt;(&lt;/span&gt;N&lt;span class="o"&gt;)&lt;/span&gt;ew / Audi&lt;span class="o"&gt;(&lt;/span&gt;t&lt;span class="o"&gt;)&lt;/span&gt; / &lt;span class="o"&gt;(&lt;/span&gt;O&lt;span class="o"&gt;)&lt;/span&gt;wner permissions off / Abo&lt;span class="o"&gt;(&lt;/span&gt;r&lt;span class="o"&gt;)&lt;/span&gt;t / &lt;span class="o"&gt;(&lt;/span&gt;F&lt;span class="o"&gt;)&lt;/span&gt;inish
-&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;We can see the used profile (/usr/lib64/virtualbox/VirtualBox) and the denied action, which we can allow now: VirtualBox tried to access the file /home/zep/.VirtualBox/selectorwindow.log. We can now select between 1,2 or 3 to set the access granularity. We can also ignore the event (I), we can deny it explicitly or make the selected path more generic (G). During this event processing we can create also new apparmor profiles for executables, which are started by VirtualBox. At the end we have multiple profiles for VirtualBox, in the best case one profile for each executable. The easiest way to reload the new profile is to restart the apparmor service:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# the generated profiles for VirtualBox&lt;/span&gt;
-ls /etc/apparmor.d/ &lt;span class="p"&gt;|&lt;/span&gt; grep VB
-
-usr.lib64.virtualbox.VBoxNetAdpCtl
-usr.lib64.virtualbox.VBoxNetDHCP
-usr.lib64.virtualbox.VBoxSVC
-usr.lib64.virtualbox.VBoxTestOGL
-usr.lib64.virtualbox.VBoxXPCOMIPCD
-&lt;/pre&gt;&lt;/div&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# restart apparmor service to reload all profiles&lt;/span&gt;
-rc-service apparmor restart
-&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;To test the profile, we start again VirtualBox. This will likely fail, because we have not yet executed the entire Virtualbox functionality and therefore the profile is incomplete. But all denied actions are logged and we refine the profile again using aa-logprof. This cycle has to be repeated three to four times.&lt;/p&gt;
-&lt;p&gt;If we quickly want to disable the profile, we can set it manually to complain mode:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# set to complain mode: only log and don&amp;#39;t deny&lt;/span&gt;
-aa-complain /usr/lib64/virtualbox/VirtualBox
-&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;To get a quick overview over all loaded profiles and the status of the confined processes:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# get overview&lt;/span&gt;
-aa-status
-&lt;/pre&gt;&lt;/div&gt;
-&lt;table class="docutils footnote" frame="void" id="id3" rules="none"&gt;
-&lt;colgroup&gt;&lt;col class="label" /&gt;&lt;col /&gt;&lt;/colgroup&gt;
-&lt;tbody valign="top"&gt;
-&lt;tr&gt;&lt;td class="label"&gt;&lt;a class="fn-backref" href="#id1"&gt;[1]&lt;/a&gt;&lt;/td&gt;&lt;td&gt;SPICE: &lt;a class="reference external" href="https://www.spice-space.org/"&gt;https://www.spice-space.org/&lt;/a&gt;&lt;/td&gt;&lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
-&lt;table class="docutils footnote" frame="void" id="id4" rules="none"&gt;
-&lt;colgroup&gt;&lt;col class="label" /&gt;&lt;col /&gt;&lt;/colgroup&gt;
-&lt;tbody valign="top"&gt;
-&lt;tr&gt;&lt;td class="label"&gt;&lt;a class="fn-backref" href="#id2"&gt;[2]&lt;/a&gt;&lt;/td&gt;&lt;td&gt;Mandatory Access Control: &lt;a class="reference external" href="https://de.wikipedia.org/wiki/Mandatory_Access_Control"&gt;https://de.wikipedia.org/wiki/Mandatory_Access_Control&lt;/a&gt;&lt;/td&gt;&lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
-</content><category term="apparmor"></category><category term="vbox"></category></entry></feed>
+</content><category term="challenge"></category><category term="SANS"></category></entry></feed>
