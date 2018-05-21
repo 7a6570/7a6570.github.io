@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <title>Write-up for hard challenge at SANS Zurich 18 | zep's blog
+</title>
+  <link rel="canonical" href="https://7a6570.github.io/write-up-for-hard-challenge-at-sans-zurich-18.html">
+
+  <link rel="alternate" type="application/atom+xml" href="https://7a6570.github.io/feeds/all.atom.xml" title="Full Atom Feed">
+  <link rel="alternate" type="application/atom+xml" href="https://7a6570.github.io/feeds/challenges.atom.xml" title="Categories Atom Feed">
+
+
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/pygments/native.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/style.css">
+
+
+<meta name="description" content="SANS Zurich 18 hard challenge write-up">
+</head>
+
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-4">
+          <a href="https://7a6570.github.io">
+            <img class="img-fluid" src=https://7a6570.github.io/images/zep.png alt="zep's blog">
+          </a>
+        </div>
+        <div class="col-sm-8">
+          <h1 class="title"><a href="https://7a6570.github.io">zep's blog</a></h1>
+          <p class="text-muted">follow me into the rabbit hole of ITsec</p>
+          <ul class="list-inline">
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/about.html">About</a></li>
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/contact.html">Contact</a></li>
+            <li class=" list-inline-item text-muted">|</li>
+            <li class="list-inline-item"><a class="fa fa-github" href="https://github.com/7a6570" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-feed" href="/feeds/all.atom.xml" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-twitter" href="https://twitter.com/7a6570" target="_blank"></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="container">
+      <h1>Write-up for hard challenge at SANS Zurich 18
+</h1>
+      <hr>
+<article class="article">
+  <header>
+    <ul class="list-inline">
+      <li class="list-inline-item text-muted" title="2018-05-21T16:58:24.405594+01:00">
+        <i class="fa fa-clock-o"></i>
+        Mon 21 May 2018
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-folder-open-o"></i>
+        <a href="https://7a6570.github.io/category/challenges.html">challenges</a>
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-files-o"></i>
+        <a href="https://7a6570.github.io/tag/challenge.html">#challenge</a>,         <a href="https://7a6570.github.io/tag/sans.html">#SANS</a>      </li>
+    </ul>
+  </header>
+  <div class="content">
+    <p>This is my write-up for the hard challenge at SANS Zurich 18. The challenges are no longer available at pastebin, but you can get them from my <a class="reference external" href="https://github.com/7a6570/challenges">git repository</a>:</p>
+<p>First let's download the challenge and check what's all about:</p>
+<div class="highlight"><pre><span></span>zep@base:~$ get -q https://raw.githubusercontent.com/7a6570/challenges/master/sans_zurich_18/hard/hard_challenge.txt
+zep@base:~$ file hard_challenge.txt
+
+hard_challenge.txt: ASCII text, with CRLF line terminators
+</pre></div>
+<p>Like with the medium SANS Zurich challenge, we have again windows line endings and the content looks like base64. Let's fix the line endings and decode the file:</p>
+<div class="highlight"><pre><span></span>zep@base:~$ sed -i <span class="s1">&#39;s|\r||g&#39;</span> hard_challenge.txt
+zep@base:~$ cat hard_challenge.txt <span class="p">|</span> base64 -d &gt; hard_challenge_decoded
+</pre></div>
+<p>Let's look what we've got:</p>
+<div class="highlight"><pre><span></span>zep@base:~$ file hard_challenge_decoded
+
+hard_challenge_decoded: ELF <span class="m">64</span>-bit LSB executable, x86-64,
+version <span class="m">1</span> <span class="o">(</span>SYSV<span class="o">)</span>, dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2,
+<span class="k">for</span> GNU/Linux <span class="m">2</span>.6.32, BuildID<span class="o">[</span>sha1<span class="o">]=</span>ac22edc7622454d7aeccf1836dbda66b72c14543, stripped
+</pre></div>
+<p>Nice, this time we have an amd64 linux binary. Let's copy the binary to a Virtual Machine for further analysis, make it executable and run it:</p>
+<div class="highlight"><pre><span></span>zep@rev_base:~$ chmod +x hard_challenge_decoded
+zep@rev_base:~$ ./hard_challenge_decoded
+                  .-<span class="s1">&#39;&#39;&#39;/.\</span>
+<span class="s1">                 (_.--&#39;</span>  <span class="p">|</span>
+                  <span class="p">|</span>  <span class="o">==</span>  <span class="p">|</span>
+             o-._ .--..--. _.-o
+                 <span class="p">|</span>   <span class="o">||</span>   <span class="p">|</span>
+                  <span class="p">;</span>--<span class="p">|</span><span class="sb">`</span>--:
+                  <span class="p">|</span>. <span class="p">|</span>   <span class="p">|</span>
+                  <span class="p">|</span>  <span class="p">;</span>_ .<span class="p">|</span>
+                  <span class="p">|</span>_____ <span class="p">|</span>
+                 /<span class="p">|</span>     <span class="s1">&#39;|\</span>
+<span class="s1">                 //`----&#39;</span><span class="se">\\</span>
+                ////<span class="p">|</span>  <span class="p">|</span>  <span class="se">\\</span>
+                /   <span class="p">|</span>  <span class="p">|</span>    <span class="se">\</span>
+                   /<span class="p">|</span>  <span class="p">|</span><span class="se">\</span>
+                  / <span class="se">\ </span> / <span class="se">\</span>
+                 /   <span class="se">\/</span>   <span class="se">\</span>
+                /          <span class="se">\</span>
+                <span class="p">|</span>          <span class="p">|</span>
+               <span class="o">||</span>    /<span class="se">\ </span>   <span class="o">||</span>
+               <span class="o">||</span>   ,  .   <span class="o">||</span>
+               <span class="o">[[</span>   NOPE!  <span class="o">]]</span>
+
+zep@rev_base:~$
+</pre></div>
+<p>Fancy :-) We have to dig deeper. Let's open the binary in IDA. Looking at the available functions, we see that all the important stuff happens in the <strong>main</strong> function at <tt class="docutils literal">.text:400666</tt>. Let's get all xrefs from the main function:</p>
+<img alt="xrefs to main function" src="https://7a6570.github.io/images/xref_main.png" />
+<p>We can see that from the main function <strong>strcmp</strong>, <strong>puts</strong>, <strong>ptrace</strong> and <strong>getenv</strong> are called. The main function also calls itself, so it seems that we have some sort of recursion (main calls itself which calls again main and so on..). As with any recursive function, there must be some sort of <a class="reference external" href="https://en.wikipedia.org/wiki/Recursion_termination">recursion termination</a>. Let's put this thought aside for a moment and let's have a look at the called functions, e.g. <strong>getenv</strong>.</p>
+<p><strong>getenv</strong> is used to get the content of an environment variable and is called two times with the argument &quot;PATH&quot;. That means the value of the environment variable PATH is used somewhere. If we have a look at the <strong>strcmp</strong> calls, we can see that the value of &quot;PATH&quot; is first compared to <strong>WOOT</strong>, then the value of &quot;PATH&quot; is retrieved again using <strong>getenv</strong>, <strong>main</strong> calls itself and after this recursion returns, the value of <strong>env_path_2nd</strong> is compared to <strong>WINNER</strong>.</p>
+<img alt="flag condition" src="https://7a6570.github.io/images/cond.png" />
+<p><strong>WINNER</strong> sounds good, let's have a look where we get, if the last <strong>strcmp</strong> evaluates to zero and the right branch is taken in the <strong>jnz</strong> instruction:</p>
+<img alt="flag decription" src="https://7a6570.github.io/images/flag_decrypt.png" />
+<p>We can spot a lot of local variables, which probably belong to an array of chars which compose the flag string. This means the flag string is built at runtime and is stored encrypted. We can easily spot the used decryption loop and the used counter for this loop. The counter is first set to zero and each loop iteration compared to 31. After 32 loop iterations, the final string is sent to stdout using the <strong>puts</strong> function.</p>
+<p>Let's start the binary in a debugger and just jump to the first instruction after the <strong>jnz</strong> instruction, which leads to the flag decryption. But first let's set a breakpoint before the <strong>ptrace</strong> call, since a program cannot be debugged two times using <strong>ptrace</strong>. This is some sort of an easy anti-debug trick.</p>
+<img alt="ptrace" src="https://7a6570.github.io/images/ptrace.png" />
+<p>We set a breakpoint at <tt class="docutils literal">.text:4006C8</tt> and start the binary in the IDA debugger and continue until we hit our breakpoint. Now we scroll down until we find the instruction at <tt class="docutils literal">text:4008CE</tt>, which is the first instruction after all checks passed (WOOT and WINNER string comparisons). Here we set this instruction as the next instruction to execute using the &quot;<strong>SET IP</strong>&quot; function of IDA (left click on the instruction and choose SET IP). This sets the value of the rip register to <strong>0x4008CE</strong>. Now we continue the execution by pressing F9. The binary prints the flag on stdout and terminates. To see the flag, IDA must have been started in a terminal (or maybe there is some other way to capture stdout in IDA?). Anyway the flag is:</p>
+<div class="highlight"><pre><span></span>FLAG: ThisisDefinitelyNotaTROLL
+</pre></div>
+<p>We were actually able to get the flag without thinking too much about the checks needed to pass. We just looked where the &quot;success&quot; path goes in the binary and jumped to this path. We were lucky and this time the lazy approach worked ;-)</p>
+<p>But still I think it might be possible to get the flag without using a debugger and changing <strong>$rip</strong>. Remember the prototype for the main function ?</p>
+<p><tt class="docutils literal">int main(int argc, char* <span class="pre">argv[],</span> char* <span class="pre">env[])</span></tt></p>
+<p>The third argument is a pointer to the environment. Since the main function of the binary calls itself, a pointer to an environment can be passed. Maybe it could be possible to set the environment this way and to set value of PATH to &quot;WINNER&quot;. The things is, first PATH needs to be equal to &quot;WOOT&quot; and at the second check, PATH needs to be equal to &quot;WINNER&quot;. But we can set the value of PATH only once, before we start to execute the binary.</p>
+
+  </div>
+</article>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+       <ul class="col-sm-6 list-inline">
+          <li class="list-inline-item"><a href="https://7a6570.github.io/archives.html">Archives</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/categories.html">Categories</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/tags.html">Tags</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>

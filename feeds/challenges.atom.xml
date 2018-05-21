@@ -1,5 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>zep's blog - challenges</title><link href="https://7a6570.github.io/" rel="alternate"></link><link href="https://7a6570.github.io/feeds/challenges.atom.xml" rel="self"></link><id>https://7a6570.github.io/</id><updated>2018-05-03T22:01:38+01:00</updated><entry><title>Write-up for medium challenge at SANS Zurich 18</title><link href="https://7a6570.github.io/write-up-for-medium-challenge-at-sans-zurich-18.html" rel="alternate"></link><published>2018-05-03T22:01:38+01:00</published><updated>2018-05-03T22:01:38+01:00</updated><author><name>zep</name></author><id>tag:7a6570.github.io,2018-05-03:/write-up-for-medium-challenge-at-sans-zurich-18.html</id><summary type="html">&lt;p class="first last"&gt;SANS Zurich 18 medium challenge write-up&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>zep's blog - challenges</title><link href="https://7a6570.github.io/" rel="alternate"></link><link href="https://7a6570.github.io/feeds/challenges.atom.xml" rel="self"></link><id>https://7a6570.github.io/</id><updated>2018-05-21T16:58:24+01:00</updated><entry><title>Write-up for hard challenge at SANS Zurich 18</title><link href="https://7a6570.github.io/write-up-for-hard-challenge-at-sans-zurich-18.html" rel="alternate"></link><published>2018-05-21T16:58:24+01:00</published><updated>2018-05-21T16:58:24+01:00</updated><author><name>zep</name></author><id>tag:7a6570.github.io,2018-05-21:/write-up-for-hard-challenge-at-sans-zurich-18.html</id><summary type="html">&lt;p class="first last"&gt;SANS Zurich 18 hard challenge write-up&lt;/p&gt;
+</summary><content type="html">&lt;p&gt;This is my write-up for the hard challenge at SANS Zurich 18. The challenges are no longer available at pastebin, but you can get them from my &lt;a class="reference external" href="https://github.com/7a6570/challenges"&gt;git repository&lt;/a&gt;:&lt;/p&gt;
+&lt;p&gt;First let's download the challenge and check what's all about:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;zep@base:~$ get -q https://raw.githubusercontent.com/7a6570/challenges/master/sans_zurich_18/hard/hard_challenge.txt
+zep@base:~$ file hard_challenge.txt
+
+hard_challenge.txt: ASCII text, with CRLF line terminators
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Like with the medium SANS Zurich challenge, we have again windows line endings and the content looks like base64. Let's fix the line endings and decode the file:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;zep@base:~$ sed -i &lt;span class="s1"&gt;&amp;#39;s|\r||g&amp;#39;&lt;/span&gt; hard_challenge.txt
+zep@base:~$ cat hard_challenge.txt &lt;span class="p"&gt;|&lt;/span&gt; base64 -d &amp;gt; hard_challenge_decoded
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Let's look what we've got:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;zep@base:~$ file hard_challenge_decoded
+
+hard_challenge_decoded: ELF &lt;span class="m"&gt;64&lt;/span&gt;-bit LSB executable, x86-64,
+version &lt;span class="m"&gt;1&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;SYSV&lt;span class="o"&gt;)&lt;/span&gt;, dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2,
+&lt;span class="k"&gt;for&lt;/span&gt; GNU/Linux &lt;span class="m"&gt;2&lt;/span&gt;.6.32, BuildID&lt;span class="o"&gt;[&lt;/span&gt;sha1&lt;span class="o"&gt;]=&lt;/span&gt;ac22edc7622454d7aeccf1836dbda66b72c14543, stripped
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Nice, this time we have an amd64 linux binary. Let's copy the binary to a Virtual Machine for further analysis, make it executable and run it:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;zep@rev_base:~$ chmod +x hard_challenge_decoded
+zep@rev_base:~$ ./hard_challenge_decoded
+                  .-&lt;span class="s1"&gt;&amp;#39;&amp;#39;&amp;#39;/.\&lt;/span&gt;
+&lt;span class="s1"&gt;                 (_.--&amp;#39;&lt;/span&gt;  &lt;span class="p"&gt;|&lt;/span&gt;
+                  &lt;span class="p"&gt;|&lt;/span&gt;  &lt;span class="o"&gt;==&lt;/span&gt;  &lt;span class="p"&gt;|&lt;/span&gt;
+             o-._ .--..--. _.-o
+                 &lt;span class="p"&gt;|&lt;/span&gt;   &lt;span class="o"&gt;||&lt;/span&gt;   &lt;span class="p"&gt;|&lt;/span&gt;
+                  &lt;span class="p"&gt;;&lt;/span&gt;--&lt;span class="p"&gt;|&lt;/span&gt;&lt;span class="sb"&gt;`&lt;/span&gt;--:
+                  &lt;span class="p"&gt;|&lt;/span&gt;. &lt;span class="p"&gt;|&lt;/span&gt;   &lt;span class="p"&gt;|&lt;/span&gt;
+                  &lt;span class="p"&gt;|&lt;/span&gt;  &lt;span class="p"&gt;;&lt;/span&gt;_ .&lt;span class="p"&gt;|&lt;/span&gt;
+                  &lt;span class="p"&gt;|&lt;/span&gt;_____ &lt;span class="p"&gt;|&lt;/span&gt;
+                 /&lt;span class="p"&gt;|&lt;/span&gt;     &lt;span class="s1"&gt;&amp;#39;|\&lt;/span&gt;
+&lt;span class="s1"&gt;                 //`----&amp;#39;&lt;/span&gt;&lt;span class="se"&gt;\\&lt;/span&gt;
+                ////&lt;span class="p"&gt;|&lt;/span&gt;  &lt;span class="p"&gt;|&lt;/span&gt;  &lt;span class="se"&gt;\\&lt;/span&gt;
+                /   &lt;span class="p"&gt;|&lt;/span&gt;  &lt;span class="p"&gt;|&lt;/span&gt;    &lt;span class="se"&gt;\&lt;/span&gt;
+                   /&lt;span class="p"&gt;|&lt;/span&gt;  &lt;span class="p"&gt;|&lt;/span&gt;&lt;span class="se"&gt;\&lt;/span&gt;
+                  / &lt;span class="se"&gt;\ &lt;/span&gt; / &lt;span class="se"&gt;\&lt;/span&gt;
+                 /   &lt;span class="se"&gt;\/&lt;/span&gt;   &lt;span class="se"&gt;\&lt;/span&gt;
+                /          &lt;span class="se"&gt;\&lt;/span&gt;
+                &lt;span class="p"&gt;|&lt;/span&gt;          &lt;span class="p"&gt;|&lt;/span&gt;
+               &lt;span class="o"&gt;||&lt;/span&gt;    /&lt;span class="se"&gt;\ &lt;/span&gt;   &lt;span class="o"&gt;||&lt;/span&gt;
+               &lt;span class="o"&gt;||&lt;/span&gt;   ,  .   &lt;span class="o"&gt;||&lt;/span&gt;
+               &lt;span class="o"&gt;[[&lt;/span&gt;   NOPE!  &lt;span class="o"&gt;]]&lt;/span&gt;
+
+zep@rev_base:~$
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Fancy :-) We have to dig deeper. Let's open the binary in IDA. Looking at the available functions, we see that all the important stuff happens in the &lt;strong&gt;main&lt;/strong&gt; function at &lt;tt class="docutils literal"&gt;.text:400666&lt;/tt&gt;. Let's get all xrefs from the main function:&lt;/p&gt;
+&lt;img alt="xrefs to main function" src="https://7a6570.github.io/images/xref_main.png" /&gt;
+&lt;p&gt;We can see that from the main function &lt;strong&gt;strcmp&lt;/strong&gt;, &lt;strong&gt;puts&lt;/strong&gt;, &lt;strong&gt;ptrace&lt;/strong&gt; and &lt;strong&gt;getenv&lt;/strong&gt; are called. The main function also calls itself, so it seems that we have some sort of recursion (main calls itself which calls again main and so on..). As with any recursive function, there must be some sort of &lt;a class="reference external" href="https://en.wikipedia.org/wiki/Recursion_termination"&gt;recursion termination&lt;/a&gt;. Let's put this thought aside for a moment and let's have a look at the called functions, e.g. &lt;strong&gt;getenv&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;getenv&lt;/strong&gt; is used to get the content of an environment variable and is called two times with the argument &amp;quot;PATH&amp;quot;. That means the value of the environment variable PATH is used somewhere. If we have a look at the &lt;strong&gt;strcmp&lt;/strong&gt; calls, we can see that the value of &amp;quot;PATH&amp;quot; is first compared to &lt;strong&gt;WOOT&lt;/strong&gt;, then the value of &amp;quot;PATH&amp;quot; is retrieved again using &lt;strong&gt;getenv&lt;/strong&gt;, &lt;strong&gt;main&lt;/strong&gt; calls itself and after this recursion returns, the value of &lt;strong&gt;env_path_2nd&lt;/strong&gt; is compared to &lt;strong&gt;WINNER&lt;/strong&gt;.&lt;/p&gt;
+&lt;img alt="flag condition" src="https://7a6570.github.io/images/cond.png" /&gt;
+&lt;p&gt;&lt;strong&gt;WINNER&lt;/strong&gt; sounds good, let's have a look where we get, if the last &lt;strong&gt;strcmp&lt;/strong&gt; evaluates to zero and the right branch is taken in the &lt;strong&gt;jnz&lt;/strong&gt; instruction:&lt;/p&gt;
+&lt;img alt="flag decription" src="https://7a6570.github.io/images/flag_decrypt.png" /&gt;
+&lt;p&gt;We can spot a lot of local variables, which probably belong to an array of chars which compose the flag string. This means the flag string is built at runtime and is stored encrypted. We can easily spot the used decryption loop and the used counter for this loop. The counter is first set to zero and each loop iteration compared to 31. After 32 loop iterations, the final string is sent to stdout using the &lt;strong&gt;puts&lt;/strong&gt; function.&lt;/p&gt;
+&lt;p&gt;Let's start the binary in a debugger and just jump to the first instruction after the &lt;strong&gt;jnz&lt;/strong&gt; instruction, which leads to the flag decryption. But first let's set a breakpoint before the &lt;strong&gt;ptrace&lt;/strong&gt; call, since a program cannot be debugged two times using &lt;strong&gt;ptrace&lt;/strong&gt;. This is some sort of an easy anti-debug trick.&lt;/p&gt;
+&lt;img alt="ptrace" src="https://7a6570.github.io/images/ptrace.png" /&gt;
+&lt;p&gt;We set a breakpoint at &lt;tt class="docutils literal"&gt;.text:4006C8&lt;/tt&gt; and start the binary in the IDA debugger and continue until we hit our breakpoint. Now we scroll down until we find the instruction at &lt;tt class="docutils literal"&gt;text:4008CE&lt;/tt&gt;, which is the first instruction after all checks passed (WOOT and WINNER string comparisons). Here we set this instruction as the next instruction to execute using the &amp;quot;&lt;strong&gt;SET IP&lt;/strong&gt;&amp;quot; function of IDA (left click on the instruction and choose SET IP). This sets the value of the rip register to &lt;strong&gt;0x4008CE&lt;/strong&gt;. Now we continue the execution by pressing F9. The binary prints the flag on stdout and terminates. To see the flag, IDA must have been started in a terminal (or maybe there is some other way to capture stdout in IDA?). Anyway the flag is:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;FLAG: ThisisDefinitelyNotaTROLL
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;We were actually able to get the flag without thinking too much about the checks needed to pass. We just looked where the &amp;quot;success&amp;quot; path goes in the binary and jumped to this path. We were lucky and this time the lazy approach worked ;-)&lt;/p&gt;
+&lt;p&gt;But still I think it might be possible to get the flag without using a debugger and changing &lt;strong&gt;$rip&lt;/strong&gt;. Remember the prototype for the main function ?&lt;/p&gt;
+&lt;p&gt;&lt;tt class="docutils literal"&gt;int main(int argc, char* &lt;span class="pre"&gt;argv[],&lt;/span&gt; char* &lt;span class="pre"&gt;env[])&lt;/span&gt;&lt;/tt&gt;&lt;/p&gt;
+&lt;p&gt;The third argument is a pointer to the environment. Since the main function of the binary calls itself, a pointer to an environment can be passed. Maybe it could be possible to set the environment this way and to set value of PATH to &amp;quot;WINNER&amp;quot;. The things is, first PATH needs to be equal to &amp;quot;WOOT&amp;quot; and at the second check, PATH needs to be equal to &amp;quot;WINNER&amp;quot;. But we can set the value of PATH only once, before we start to execute the binary.&lt;/p&gt;
+</content><category term="challenge"></category><category term="SANS"></category></entry><entry><title>Write-up for medium challenge at SANS Zurich 18</title><link href="https://7a6570.github.io/write-up-for-medium-challenge-at-sans-zurich-18.html" rel="alternate"></link><published>2018-05-03T22:01:38+01:00</published><updated>2018-05-03T22:01:38+01:00</updated><author><name>zep</name></author><id>tag:7a6570.github.io,2018-05-03:/write-up-for-medium-challenge-at-sans-zurich-18.html</id><summary type="html">&lt;p class="first last"&gt;SANS Zurich 18 medium challenge write-up&lt;/p&gt;
 </summary><content type="html">&lt;p&gt;This is my write-up for the medium challenge at SANS Zurich 18. The challenges are no longer available at pastebin, but you can get them from my &lt;a class="reference external" href="https://github.com/7a6570/challenges"&gt;git repository&lt;/a&gt;:&lt;/p&gt;
 &lt;p&gt;First let's download the challenge and check what's all about:&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;wget -q https://raw.githubusercontent.com/7a6570/challenges/master/sans_zurich_18/medium/medium_challenge.txt
