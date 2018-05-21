@@ -57,7 +57,7 @@
 <article class="article">
   <header>
     <ul class="list-inline">
-      <li class="list-inline-item text-muted" title="2018-05-21T16:58:24.405594+01:00">
+      <li class="list-inline-item text-muted" title="2018-05-21T17:13:56.098886+01:00">
         <i class="fa fa-clock-o"></i>
         Mon 21 May 2018
       </li>
@@ -121,7 +121,7 @@ zep@rev_base:~$
 <p>We can see that from the main function <strong>strcmp</strong>, <strong>puts</strong>, <strong>ptrace</strong> and <strong>getenv</strong> are called. The main function also calls itself, so it seems that we have some sort of recursion (main calls itself which calls again main and so on..). As with any recursive function, there must be some sort of <a class="reference external" href="https://en.wikipedia.org/wiki/Recursion_termination">recursion termination</a>. Let's put this thought aside for a moment and let's have a look at the called functions, e.g. <strong>getenv</strong>.</p>
 <p><strong>getenv</strong> is used to get the content of an environment variable and is called two times with the argument &quot;PATH&quot;. That means the value of the environment variable PATH is used somewhere. If we have a look at the <strong>strcmp</strong> calls, we can see that the value of &quot;PATH&quot; is first compared to <strong>WOOT</strong>, then the value of &quot;PATH&quot; is retrieved again using <strong>getenv</strong>, <strong>main</strong> calls itself and after this recursion returns, the value of <strong>env_path_2nd</strong> is compared to <strong>WINNER</strong>.</p>
 <img alt="flag condition" src="https://7a6570.github.io/images/cond.png" />
-<p><strong>WINNER</strong> sounds good, let's have a look where we get, if the last <strong>strcmp</strong> evaluates to zero and the right branch is taken in the <strong>jnz</strong> instruction:</p>
+<p><strong>WINNER</strong> sounds good, let's have a look where we get, if the last <strong>strcmp</strong> evaluates to zero and the right branch is taken from the <strong>jnz</strong> instruction:</p>
 <img alt="flag decription" src="https://7a6570.github.io/images/flag_decrypt.png" />
 <p>We can spot a lot of local variables, which probably belong to an array of chars which compose the flag string. This means the flag string is built at runtime and is stored encrypted. We can easily spot the used decryption loop and the used counter for this loop. The counter is first set to zero and each loop iteration compared to 31. After 32 loop iterations, the final string is sent to stdout using the <strong>puts</strong> function.</p>
 <p>Let's start the binary in a debugger and just jump to the first instruction after the <strong>jnz</strong> instruction, which leads to the flag decryption. But first let's set a breakpoint before the <strong>ptrace</strong> call, since a program cannot be debugged two times using <strong>ptrace</strong>. This is some sort of an easy anti-debug trick.</p>
