@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <title>BlackAlps CTF 19 / Forensics "alps challenge" | zep's blog
+</title>
+  <link rel="canonical" href="/blackalps-ctf-19-forensics-alps-challenge.html">
+
+
+
+  <link rel="stylesheet" href="/theme/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/theme/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/theme/css/pygments/native.min.css">
+  <link rel="stylesheet" href="/theme/css/style.css">
+
+
+<meta name="description" content="Blackalps 19 CTF "alps" challenge write-up">
+</head>
+
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-4">
+          <a href="">
+            <img class="img-fluid" src=/images/zep.png alt="zep's blog">
+          </a>
+        </div>
+        <div class="col-sm-8">
+          <h1 class="title"><a href="">zep's blog</a></h1>
+          <p class="text-muted">follow me into the rabbit hole of ITsec</p>
+          <ul class="list-inline">
+            <li class="list-inline-item"><a href="/pages/about.html">About</a></li>
+            <li class="list-inline-item"><a href="/pages/contact.html">Contact</a></li>
+            <li class=" list-inline-item text-muted">|</li>
+            <li class="list-inline-item"><a class="fa fa-github" href="https://github.com/7a6570" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-feed" href="/feeds/all.atom.xml" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-twitter" href="https://twitter.com/7a6570" target="_blank"></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="container">
+      <h1>BlackAlps CTF 19 / Forensics &quot;alps challenge&quot;
+</h1>
+      <hr>
+<article class="article">
+  <header>
+    <ul class="list-inline">
+      <li class="list-inline-item text-muted" title="2019-11-12T21:48:31.006587+00:00">
+        <i class="fa fa-clock-o"></i>
+        Tue 12 November 2019
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-folder-open-o"></i>
+        <a href="/category/challenges.html">challenges</a>
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-files-o"></i>
+        <a href="/tag/ctf.html">#CTF</a>,         <a href="/tag/blackalps.html">#blackalps</a>,         <a href="/tag/forensics.html">#forensics</a>,         <a href="/tag/pdf.html">#PDF</a>      </li>
+    </ul>
+  </header>
+  <div class="content">
+    <p>This is my solution for the BlackAlps CTF 2019 alps forensic challenge. We start with following file 'favicon.jpg':</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ sha256sum favicon.jpg
+ae74c70953f804b1b6f315586530ca956dd16c110f4ffc964741516e5b272529  favicon.jpg
+</pre></div>
+<p>First let's check the mime type of the file using the <strong>file</strong> tool:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ file favicon.jpg
+favicon.jpg: JPEG image data, JFIF standard <span class="m">1</span>.01, resolution <span class="o">(</span>DPI<span class="o">)</span>, density 95x95, segment
+length <span class="m">16</span>, progressive, precision <span class="m">8</span>, 32x32, components <span class="m">3</span>
+</pre></div>
+<p>And then using <strong>exiftool</strong>:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ exiftool favicon.jpg
+ExifTool Version Number         : <span class="m">11</span>.65
+File Name                       : favicon.jpg
+Directory                       : .
+File Size                       : <span class="m">43</span> kB
+File Modification Date/Time     : <span class="m">2019</span>:11:08 <span class="m">13</span>:13:30-05:00
+File Access Date/Time           : <span class="m">2019</span>:11:09 <span class="m">09</span>:47:56-05:00
+File Inode Change Date/Time     : <span class="m">2019</span>:11:08 <span class="m">14</span>:18:27-05:00
+File Permissions                : rw-r--r--
+File Type                       : JPEG
+File Type Extension             : jpg
+MIME Type                       : image/jpeg
+JFIF Version                    : <span class="m">1</span>.01
+Resolution Unit                 : inches
+X Resolution                    : <span class="m">95</span>
+Y Resolution                    : <span class="m">95</span>
+Image Width                     : <span class="m">32</span>
+Image Height                    : <span class="m">32</span>
+Encoding Process                : Progressive DCT, Huffman coding
+Bits Per Sample                 : <span class="m">8</span>
+Color Components                : <span class="m">3</span>
+Y Cb Cr Sub Sampling            : YCbCr4:4:4 <span class="o">(</span><span class="m">1</span> <span class="m">1</span><span class="o">)</span>
+Image Size                      : 32x32
+Megapixels                      : <span class="m">0</span>.001
+</pre></div>
+<p>We have indeed a valid JPG file. Let's have a look at the file in a hex editor:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ xxd -l <span class="m">1030</span> -c <span class="m">50</span> favicon.jpg
+
+<span class="m">00000000</span>: ffd8 ffe0 <span class="m">0010</span> 4a46 <span class="m">4946</span> <span class="m">0001</span> <span class="m">0101</span> 005f 005f <span class="m">0000</span> ffdb <span class="m">0043</span> <span class="m">0003</span> <span class="m">0202</span> <span class="m">0302</span> <span class="m">0203</span> <span class="m">0303</span> <span class="m">0304</span> <span class="m">0303</span> <span class="m">0405</span> <span class="m">0805</span> <span class="m">0504</span> <span class="m">0405</span> 0a07 <span class="m">0706</span>  ......JFIF....._._.....C..........................
+<span class="m">00000032</span>: 080c 0a0c 0c0b 0a0b 0b0d 0e12 100d 0e11 0e0b 0b10 <span class="m">1610</span> <span class="m">1113</span> <span class="m">1415</span> <span class="m">1515</span> 0c0f <span class="m">1718</span> <span class="m">1614</span> <span class="m">1812</span> <span class="m">1415</span> 14ff db00 <span class="m">4301</span> <span class="m">0304</span> <span class="m">0405</span> <span class="m">0405</span>  ..........................................C.......
+</pre></div>
+<div class="highlight"><pre><span></span><span class="m">00000384</span>: 8e29 <span class="m">3415</span> 6d45 060a <span class="m">2712</span> <span class="m">1220</span> 08e1 15bf 84db ce03 73ca 504e 903b <span class="m">0007</span> 9fff d925 <span class="m">5044</span> 462d 312e 340a 25c3 a4c3 bcc3 b6c3 9f0a  .<span class="o">)</span><span class="m">4</span>.mE..<span class="err">&#39;</span>.. ........s.PN.<span class="p">;</span>.....%PDF-1.4.%.........
+000003b6: <span class="m">3220</span> <span class="m">3020</span> 6f62 6a0a 3c3c 2f4c 656e <span class="m">6774</span> <span class="m">6820</span> <span class="m">3320</span> <span class="m">3020</span> 522f <span class="m">4669</span> 6c74 <span class="m">6572</span> 2f46 6c61 <span class="m">7465</span> <span class="m">4465</span> 636f <span class="m">6465</span> 3e3e 0a73 <span class="m">7472</span> <span class="m">6561</span>  <span class="m">2</span> <span class="m">0</span> obj.&lt;&lt;/Length <span class="m">3</span> <span class="m">0</span> R/Filter/FlateDecode&gt;&gt;.strea
+000003e8: 6d0a 789c <span class="m">8555</span> 4b8b 9c40 10be fb2b fa1c d054 b5fd b041 041d 9d40 6e9b <span class="m">0839</span>                                                    m.x..UK..@...+...T...A...@n..9
+</pre></div>
+<p>We can see that it's a valid JPG file, but there seems also to be a valid PDF header starting with the keyword <strong>%PDF-1.4%</strong>. So let's open this file in a PDF viewer. Surprisingly Adobe Reader complaint while opening the file, whereas the Evince PDF viewer happily opened the file.</p>
+<img alt="discovered PDF" src="/images/ba19/959c87882bd7432096c4499635ad0002.png" />
+<p>The embedded URL points to the Adobe PDF specifications and the mentioned <em>item 13</em> points out why this JPG / PDF poliglot file actually does work:</p>
+<blockquote>
+<a class="reference external" href="https://www.adobe.com/content/dam/acom/en/devnet/pdf/pdf_reference_archive/pdf_reference_1-7.pdf">https://www.adobe.com/content/dam/acom/en/devnet/pdf/pdf_reference_archive/pdf_reference_1-7.pdf</a>
+Compatibility and Implementation NotesAPPENDIX H11023.4.1, “File Header”
+13.
+Acrobat  viewers  require  only  that  the  header  appear  somewhere  within  the first 1024 bytes of the file.</blockquote>
+<p>So let's analyze the discovered PDF using PDF parser:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ pdf-parser.py favicon.jpg -a
+Comment: <span class="m">4</span>
+XREF: <span class="m">1</span>
+Trailer: <span class="m">1</span>
+StartXref: <span class="m">1</span>
+Indirect object: <span class="m">40</span>
+<span class="m">19</span>: <span class="m">2</span>, <span class="m">3</span>, <span class="m">5</span>, <span class="m">6</span>, <span class="m">14</span>, <span class="m">15</span>, <span class="m">17</span>, <span class="m">19</span>, <span class="m">20</span>, <span class="m">22</span>, <span class="m">24</span>, <span class="m">25</span>, <span class="m">27</span>, <span class="m">29</span>, <span class="m">30</span>, <span class="m">32</span>, <span class="m">10</span>, <span class="m">36</span>, <span class="m">40</span>
+/Annot <span class="m">4</span>: <span class="m">11</span>, <span class="m">12</span>, <span class="m">7</span>, <span class="m">9</span>
+/Catalog <span class="m">1</span>: <span class="m">39</span>
+/Font <span class="m">6</span>: <span class="m">18</span>, <span class="m">23</span>, <span class="m">28</span>, <span class="m">33</span>, <span class="m">35</span>, <span class="m">8</span>
+/FontDescriptor <span class="m">5</span>: <span class="m">16</span>, <span class="m">21</span>, <span class="m">26</span>, <span class="m">31</span>, <span class="m">34</span>
+/Page <span class="m">2</span>: <span class="m">1</span>, <span class="m">4</span>
+/Pages <span class="m">1</span>: <span class="m">13</span>
+/XObject <span class="m">2</span>: <span class="m">37</span>, <span class="m">38</span>
+Search keywords:
+/JS <span class="m">1</span>: <span class="m">7</span>
+/JavaScript <span class="m">1</span>: <span class="m">7</span>
+/AA <span class="m">1</span>: <span class="m">7</span>
+/OpenAction <span class="m">1</span>: <span class="m">39</span>
+/AcroForm <span class="m">1</span>: <span class="m">39</span>
+/URI <span class="m">2</span>: <span class="m">11</span>, <span class="m">12</span>
+</pre></div>
+<p>We can see that this PDF contains Javascript, has Acroforms and even and an Openaction. Let's extract the embedded Javascript code and have a look at it:</p>
+<div class="highlight"><pre><span></span>pdf-parser.py --search javascript favicon.jpg
+
+<span class="k">function</span> wtf<span class="o">(</span><span class="nb">pwd</span><span class="o">)</span> <span class="o">{</span>
+
+<span class="k">return</span> <span class="o">(</span><span class="k">function</span><span class="o">(</span>x<span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> x.join<span class="o">(</span><span class="s1">&#39;&#39;</span><span class="o">)</span><span class="p">;</span>
+<span class="o">})</span>
+
+<span class="o">(</span>
+    <span class="o">(</span><span class="k">function</span><span class="o">(</span>x<span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> x.split<span class="o">(</span><span class="s1">&#39;&#39;</span><span class="o">)</span><span class="p">;</span>
+    <span class="o">})</span>
+
+    <span class="o">(</span><span class="nb">pwd</span><span class="o">)</span>.map<span class="o">(</span><span class="k">function</span><span class="o">(</span>x<span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> x.charCodeAt<span class="o">(</span><span class="m">0</span><span class="o">)</span><span class="p">;</span>
+    <span class="o">})</span>.map<span class="o">(</span>
+
+        <span class="k">function</span><span class="o">(</span>y<span class="o">)</span> <span class="o">{</span>
+
+            <span class="k">return</span> <span class="o">((</span>
+
+                <span class="k">function</span><span class="o">(</span>x<span class="o">)</span> <span class="o">{</span>
+
+                    <span class="k">return</span> String.fromCharCode<span class="o">(</span>x<span class="o">)</span><span class="p">;</span>
+                <span class="o">}</span>
+            <span class="o">)((</span>
+                    <span class="k">function</span><span class="o">(</span>x<span class="o">)</span> <span class="o">{</span>
+                        <span class="k">return</span> y + x<span class="p">;</span>
+                    <span class="o">})</span>
+
+                <span class="o">((</span>
+                    <span class="k">function</span><span class="o">(</span>x<span class="o">)</span> <span class="o">{</span>
+                        <span class="k">return</span> x * <span class="m">10</span><span class="p">;</span>
+                    <span class="o">})((</span>
+                    <span class="k">function</span><span class="o">(</span>x<span class="o">)</span> <span class="o">{</span>
+                        <span class="k">return</span> <span class="o">(</span>-1<span class="o">)</span> ** x<span class="p">;</span>
+                    <span class="o">})((</span>
+                    <span class="k">function</span><span class="o">(</span>x<span class="o">)</span> <span class="o">{</span>
+                        <span class="k">return</span> x % <span class="m">2</span><span class="p">;</span>
+                    <span class="o">})(</span>y<span class="o">))))))</span>
+        <span class="o">}</span>
+    <span class="o">)</span>
+<span class="o">)</span>
+<span class="o">}</span>
+
+
+var <span class="nb">pwd</span> <span class="o">=</span> this.getField<span class="o">(</span><span class="s2">&quot;InPassword&quot;</span><span class="o">)</span>.value<span class="p">;</span>
+<span class="k">if</span> <span class="o">(</span><span class="nb">pwd</span> !<span class="o">=</span> null <span class="o">&amp;&amp;</span> pwd.length &gt; <span class="m">0</span><span class="o">){</span>
+        <span class="k">if</span> <span class="o">(</span>wtf<span class="o">(</span><span class="nb">pwd</span><span class="o">)</span> <span class="o">==</span> this.info.Title<span class="o">){</span>
+                app.alert<span class="o">(</span><span class="s2">&quot;0.o You actually did it !&quot;</span><span class="o">)</span><span class="p">;</span>
+        <span class="o">}</span>
+        <span class="k">else</span><span class="o">{</span>
+                app.alert<span class="o">(</span><span class="s2">&quot;Haha nope&quot;</span><span class="o">)</span><span class="p">;</span>
+        <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">else</span><span class="o">{</span>
+        app.alert<span class="o">(</span><span class="s2">&quot;Haha nope&quot;</span><span class="o">)</span><span class="p">;</span>
+<span class="o">}</span>
+<span class="o">)</span>
+</pre></div>
+<p>The found Javascript code was beautified to be more readable. There are plenty of online Javascript code beautifiers and even CyberChef has an corresponding recipe. The interesting part of the Javascript code is at the end: We can see that a password value is taken from the password Acroform and used as input for the Javascript function <strong>wtf</strong>. The output from this function is compared to the title of the PDF. If both match, a message box shows &quot;You actually did it&quot;. This means that the actual flag we're searching for is stored in some encoded way in the title of the PDF. If we supply the right flag, the function <strong>wtf</strong> encodes it and this value is then compared to the PDF title. To get the flag, we have to understand the function <strong>wtf</strong> and we have to get the title of the PDF.</p>
+<p>To understand what the function <strong>wtf</strong> does, it's very helpful to be able to actually execute this function and to be able to observe corresponding input and output values. We can use the spidermonkey Javascript engine to be able to execute Javascript code independent from a web browser. Following debian packages contain spidermonkey:</p>
+<ul class="simple">
+<li>libmozjs-52-0</li>
+<li>libmozjs-52-dev</li>
+</ul>
+<p>Now Javascript code can be executed using the js52 command. To examine the functionality of the <strong>wtf</strong> function, let's create a new file and copy the corresponding function definition to this file. To study this function, we need to execute it and to print its output. This can be achieved using this Javascript statement:</p>
+<blockquote>
+console.log(wtf(&quot;some_input_string&quot;));</blockquote>
+<p>Next we have to extract the title from the PDF using this command:</p>
+<div class="highlight"><pre><span></span>pdf-parser.py --search title favicon.jpg
+
+/Creator &lt;FEFF005700720069007400650072&gt;
+/Title &lt;4c37272f714e4a565b6169556d277676555c6b765b555e7229554d3a7c766e73&gt;
+/Producer &lt;FEFF004C0069006200720065004F0066006600690063006500200035002E0032&gt;
+/CreationDate <span class="s2">&quot;(D:20191024083503-04&#39;00&#39;)&quot;</span>
+</pre></div>
+<p>The hex string of the title attribute is actually valid UTF-8 and can be decoded using this Ipython command:</p>
+<div class="highlight"><pre><span></span>ln <span class="o">[</span><span class="m">1</span><span class="o">]</span>: bytes.fromhex<span class="o">(</span><span class="s2">&quot;4c37272f714e4a565b6169556d277676555c6b765b555e7229554d3a7c766e73&quot;</span><span class="o">)</span>
+Out<span class="o">[</span><span class="m">1</span><span class="o">]</span>: b<span class="s2">&quot;L7&#39;/qNJV[aiUm&#39;vvU\\kv[U^r)UM:|vns&quot;</span>
+</pre></div>
+<p>Now we have everything we need: We can execute the <strong>wtf</strong> Javascript function using spidermonkey and we have the needed output, which is equal to the title of the PDF. Since we actually already know the first 5 chars of valid flags (valid flags start with 'BA19{'), we can easily check whether the encoding of these first flags chars match the found title of the PDF. To do this, I created following table: The first line contains the first five chars of a valid flags. The second line contains the first five chars of the found PDF title. The next two lines contain the char codes of of the corresponding chars above. The last line contains the difference between the two char codes.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="16%" />
+<col width="16%" />
+<col width="16%" />
+<col width="16%" />
+<col width="16%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Name</th>
+<th class="head">char1</th>
+<th class="head">char2</th>
+<th class="head">char3</th>
+<th class="head">char4</th>
+<th class="head">char5</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>FLAG</td>
+<td>B</td>
+<td>A</td>
+<td>1</td>
+<td>9</td>
+<td>{</td>
+</tr>
+<tr><td>TITLE</td>
+<td>L</td>
+<td>7</td>
+<td>'</td>
+<td>/</td>
+<td>q</td>
+</tr>
+<tr><td>code_f</td>
+<td>66</td>
+<td>65</td>
+<td>49</td>
+<td>57</td>
+<td>123</td>
+</tr>
+<tr><td>code_t</td>
+<td>76</td>
+<td>55</td>
+<td>39</td>
+<td>47</td>
+<td>113</td>
+</tr>
+<tr><td>diff</td>
+<td>+10</td>
+<td>-10</td>
+<td>-10</td>
+<td>-10</td>
+<td>-10</td>
+</tr>
+</tbody>
+</table>
+<p>This table shows nicely that the Javascript function <strong>wtf</strong> adds or subtracts 10 of the char code of the corresponding char. Since we saw in the Javascript code of the wtf function that once the modulo operation is used to return the remainder of the division of x by 2, I guessed this might be a possible condition to try:</p>
+<p>If the char code of the corresponding char is even (x % 2 == 0), subtract 10 from the char code. If the char code of the corresponding char is not even (x % 2 == 1), add 10 to the char code.</p>
+<p>I tried this using following Ipython commands:</p>
+<div class="highlight"><pre><span></span>In <span class="o">[</span><span class="m">31</span><span class="o">]</span>: s
+Out<span class="o">[</span><span class="m">31</span><span class="o">]</span>: <span class="s2">&quot;L7&#39;/qNJV[aiUm&#39;vvU\\kv[U^r)UM:|vns&quot;</span>
+
+In <span class="o">[</span><span class="m">32</span><span class="o">]</span>: <span class="k">for</span> c in s:
+    ...:     <span class="nv">d</span><span class="o">=</span><span class="m">0</span>
+    ...:     <span class="nv">o</span><span class="o">=</span>ord<span class="o">(</span>c<span class="o">)</span>
+    ...:     <span class="k">if</span> o % <span class="nv">2</span> <span class="o">==</span><span class="m">0</span>:
+    ...:         <span class="nv">d</span><span class="o">=</span>-10
+    ...:     <span class="k">else</span>:
+    ...:         <span class="nv">d</span><span class="o">=</span><span class="m">10</span>
+    ...:     sys.stdout.write<span class="o">(</span>chr<span class="o">(</span>ord<span class="o">(</span>c<span class="o">)</span>+d<span class="o">))</span>
+    ...:
+    ...:
+BA19<span class="o">{</span>D@Leks_w1ll_Rule_Th3_W0rld<span class="o">}</span>
+</pre></div>
+<p>And here we go, we have found the flag: <strong>BA19{D&#64;Leks_w1ll_Rule_Th3_W0rld}</strong></p>
+<div class="section" id="keypoints-to-remember">
+<h2>Keypoints to remember</h2>
+<ul class="simple">
+<li>Don't focus too much on the details: The function wtf is very unreadable Javascript and difficult to understand. It's much easier to treat this function as a blackbox and to analyze input and output values of this function whether actually to understand the Javascript code itself.</li>
+<li>Remember what was given: Flags have a common format..</li>
+</ul>
+<span class="target" id="poliglot"><span id="pdf-parser"></span></span></div>
+
+  </div>
+</article>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+       <ul class="col-sm-6 list-inline">
+          <li class="list-inline-item"><a href="/archives.html">Archives</a></li>
+          <li class="list-inline-item"><a href="/categories.html">Categories</a></li>
+          <li class="list-inline-item"><a href="/tags.html">Tags</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>
