@@ -9,14 +9,14 @@
 
   <title>Write-up for hard challenge at SANS Zurich 18 | zep's blog
 </title>
-  <link rel="canonical" href="/write-up-for-hard-challenge-at-sans-zurich-18.html">
+  <link rel="canonical" href="./write-up-for-hard-challenge-at-sans-zurich-18.html">
 
 
 
-  <link rel="stylesheet" href="/theme/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/theme/css/font-awesome.min.css">
-  <link rel="stylesheet" href="/theme/css/pygments/native.min.css">
-  <link rel="stylesheet" href="/theme/css/style.css">
+  <link rel="stylesheet" href="./theme/css/bootstrap.min.css">
+  <link rel="stylesheet" href="./theme/css/font-awesome.min.css">
+  <link rel="stylesheet" href="./theme/css/pygments/native.min.css">
+  <link rel="stylesheet" href="./theme/css/style.css">
 
 
 <meta name="description" content="SANS Zurich 18 hard challenge write-up">
@@ -27,16 +27,16 @@
     <div class="container">
       <div class="row">
         <div class="col-sm-4">
-          <a href="">
-            <img class="img-fluid" src=/images/zep.png alt="zep's blog">
+          <a href=".">
+            <img class="img-fluid" src=./images/zep.png alt="zep's blog">
           </a>
         </div>
         <div class="col-sm-8">
-          <h1 class="title"><a href="">zep's blog</a></h1>
+          <h1 class="title"><a href=".">zep's blog</a></h1>
           <p class="text-muted">follow me into the rabbit hole of ITsec</p>
           <ul class="list-inline">
-            <li class="list-inline-item"><a href="/pages/about.html">About</a></li>
-            <li class="list-inline-item"><a href="/pages/contact.html">Contact</a></li>
+            <li class="list-inline-item"><a href="./pages/about.html">About</a></li>
+            <li class="list-inline-item"><a href="./pages/contact.html">Contact</a></li>
             <li class=" list-inline-item text-muted">|</li>
             <li class="list-inline-item"><a class="fa fa-github" href="https://github.com/7a6570" target="_blank"></a></li>
             <li class="list-inline-item"><a class="fa fa-feed" href="/feeds/all.atom.xml" target="_blank"></a></li>
@@ -61,11 +61,11 @@
       </li>
       <li class="list-inline-item">
         <i class="fa fa-folder-open-o"></i>
-        <a href="/category/challenges.html">challenges</a>
+        <a href="./category/challenges.html">challenges</a>
       </li>
       <li class="list-inline-item">
         <i class="fa fa-files-o"></i>
-        <a href="/tag/challenge.html">#challenge</a>,         <a href="/tag/sans.html">#SANS</a>      </li>
+        <a href="./tag/challenge.html">#challenge</a>,         <a href="./tag/sans.html">#SANS</a>      </li>
     </ul>
   </header>
   <div class="content">
@@ -115,15 +115,15 @@ zep@rev_base:~$ ./hard_challenge_decoded
 zep@rev_base:~$
 </pre></div>
 <p>Fancy :-) We have to dig deeper. Let's open the binary in IDA. Looking at the available functions, we see that all the important stuff happens in the <strong>main</strong> function at <tt class="docutils literal">.text:400666</tt>. Let's get all xrefs from the main function:</p>
-<img alt="xrefs to main function" src="/images/xref_main.png" />
+<img alt="xrefs to main function" src="./images/xref_main.png" />
 <p>We can see that from the main function <strong>strcmp</strong>, <strong>puts</strong>, <strong>ptrace</strong> and <strong>getenv</strong> are called. The main function also calls itself, so it seems that we have some sort of recursion (main calls itself which calls again main and so on..). As with any recursive function, there must be some sort of <a class="reference external" href="https://en.wikipedia.org/wiki/Recursion_termination">recursion termination</a>. Let's put this thought aside for a moment and let's have a look at the called functions, e.g. <strong>getenv</strong>.</p>
 <p><strong>getenv</strong> is used to get the content of an environment variable and is called two times with the argument &quot;PATH&quot;. That means the value of the environment variable PATH is used somewhere. If we have a look at the <strong>strcmp</strong> calls, we can see that the value of &quot;PATH&quot; is first compared to <strong>WOOT</strong>, then the value of &quot;PATH&quot; is retrieved again using <strong>getenv</strong>, <strong>main</strong> calls itself and after this recursion returns, the value of <strong>env_path_2nd</strong> is compared to <strong>WINNER</strong>.</p>
-<img alt="flag condition" src="/images/cond.png" />
+<img alt="flag condition" src="./images/cond.png" />
 <p><strong>WINNER</strong> sounds good, let's have a look where we get, if the last <strong>strcmp</strong> evaluates to zero and the right branch is taken from the <strong>jnz</strong> instruction:</p>
-<img alt="flag decription" src="/images/flag_decrypt.png" />
+<img alt="flag decription" src="./images/flag_decrypt.png" />
 <p>We can spot a lot of local variables, which probably belong to an array of chars which compose the flag string. This means the flag string is built at runtime and is stored encrypted. We can easily spot the used decryption loop and the used counter for this loop. The counter is first set to zero and each loop iteration compared to 31. After 32 loop iterations, the final string is sent to stdout using the <strong>puts</strong> function.</p>
 <p>Let's start the binary in a debugger and just jump to the first instruction after the <strong>jnz</strong> instruction, which leads to the flag decryption. But first let's set a breakpoint before the <strong>ptrace</strong> call, since a program cannot be debugged two times using <strong>ptrace</strong>. This is some sort of an easy anti-debug trick.</p>
-<img alt="ptrace" src="/images/ptrace.png" />
+<img alt="ptrace" src="./images/ptrace.png" />
 <p>We set a breakpoint at <tt class="docutils literal">.text:4006C8</tt> and start the binary in the IDA debugger and continue until we hit our breakpoint. Now we scroll down until we find the instruction at <tt class="docutils literal">text:4008CE</tt>, which is the first instruction after all checks passed (WOOT and WINNER string comparisons). Here we set this instruction as the next instruction to execute using the &quot;<strong>SET IP</strong>&quot; function of IDA (left click on the instruction and choose SET IP). This sets the value of the rip register to <strong>0x4008CE</strong>. Now we continue the execution by pressing F9. The binary prints the flag on stdout and terminates. To see the flag, IDA must have been started in a terminal (or maybe there is some other way to capture stdout in IDA?). Anyway the flag is:</p>
 <div class="highlight"><pre><span></span>FLAG: ThisisDefinitelyNotaTROLL
 </pre></div>
@@ -141,9 +141,9 @@ zep@rev_base:~$
     <div class="container">
       <div class="row">
        <ul class="col-sm-6 list-inline">
-          <li class="list-inline-item"><a href="/archives.html">Archives</a></li>
-          <li class="list-inline-item"><a href="/categories.html">Categories</a></li>
-          <li class="list-inline-item"><a href="/tags.html">Tags</a></li>
+          <li class="list-inline-item"><a href="./archives.html">Archives</a></li>
+          <li class="list-inline-item"><a href="./categories.html">Categories</a></li>
+          <li class="list-inline-item"><a href="./tags.html">Tags</a></li>
         </ul>
       </div>
     </div>
