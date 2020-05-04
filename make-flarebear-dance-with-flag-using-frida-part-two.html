@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <title>Make Flarebear dance with flag using Frida (part two) | zep's blog
+</title>
+  <link rel="canonical" href="/make-flarebear-dance-with-flag-using-frida-part-two.html">
+
+
+
+  <link rel="stylesheet" href="/theme/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/theme/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/theme/css/pygments/native.min.css">
+  <link rel="stylesheet" href="/theme/css/style.css">
+
+
+<meta name="description" content="Flare-On 6 CTF Flarebear challenge write-up">
+</head>
+
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-4">
+          <a href="">
+            <img class="img-fluid" src=/images/zep.png alt="zep's blog">
+          </a>
+        </div>
+        <div class="col-sm-8">
+          <h1 class="title"><a href="">zep's blog</a></h1>
+          <p class="text-muted">follow me into the rabbit hole of ITsec</p>
+          <ul class="list-inline">
+            <li class="list-inline-item"><a href="/pages/about.html">About</a></li>
+            <li class="list-inline-item"><a href="/pages/contact.html">Contact</a></li>
+            <li class=" list-inline-item text-muted">|</li>
+            <li class="list-inline-item"><a class="fa fa-github" href="https://github.com/7a6570" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-feed" href="/feeds/all.atom.xml" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-twitter" href="https://twitter.com/7a6570" target="_blank"></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="container">
+      <h1>Make Flarebear dance with flag using Frida (part two)
+</h1>
+      <hr>
+<article class="article">
+  <header>
+    <ul class="list-inline">
+      <li class="list-inline-item text-muted" title="2020-03-23T00:00:00+00:00">
+        <i class="fa fa-clock-o"></i>
+        Mon 23 March 2020
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-folder-open-o"></i>
+        <a href="/category/challenges.html">challenges</a>
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-files-o"></i>
+        <a href="/tag/challenge.html">#challenge</a>,         <a href="/tag/flare.html">#Flare</a>      </li>
+    </ul>
+  </header>
+  <div class="content">
+    <p>In this second part of the blog we'll setup the needed environment to run the FlareBear Android application to do dynamic analysis.</p>
+<p>The easiest way to run FlareBear is to use Android Studio and the corresponding emulator. And now comes the tricky part: Without hardware acceleration, the emulator runs terribly slow and the FlareBear application is unusable.</p>
+<p>First I tried to setup Android Studio in a Windows VM. Even with enabled VT-x pass through, Intel Hardware Accelerated Execution Manager (HAXM) refused to install and therefore the emulator run without acceleration and was super slow.</p>
+<p>Later I realized that Android Studio also runs on Linux. This worked much better, since <strong>KVM</strong> is used there for hardware acceleration.</p>
+<p>To start, following is needed:</p>
+<ul class="simple">
+<li>A Linux VM with enabled VT-x (consult your hypervisors documentation on how to enable this)</li>
+<li>Android Studio</li>
+</ul>
+<p><a class="reference external" href="https://developer.android.com/studio">Android Studio</a> can be downloaded for free from Google.</p>
+<img alt="download of Android Studio" src="/images/flarebear/android_studio.png" />
+<p>After downloading the archive, extract it and switch to the bin directory. Then execute <strong>studio.sh</strong>:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="highlight"><pre><span></span>tar xvzf android-studio-ide-<span class="si">${</span><span class="nv">version</span><span class="si">}</span>-linux.tar.gz
+<span class="nb">cd</span> android-studio/bin
+./studio.sh
+</pre></div>
+</td></tr></table><p>The installation wizard will appear and guide you through the installation process. Important is to install also the Android virtual devices, as this is actually the needed emulator.</p>
+<img alt="installation of Android Studio" src="/images/flarebear/android_studio_installation.png" />
+<p>After the downloading of the additional components and their installation, following window appears:</p>
+<img alt="launch the AVD manager" src="/images/flarebear/android_studio_2.png" />
+<p>Since we do not want to create a new Android application project, we select <strong>Configure</strong> and the <strong>AVD Manager</strong> to create a new Android Virtual Device. In the next step, the virtual hardware can be specified:</p>
+<img alt="AVD hardware manager" src="/images/flarebear/AVD_hardware.png" />
+<p>It doesn't matter so much which phone model is selected. The next step is more important.</p>
+<img alt="AVD system image" src="/images/flarebear/AVD_system_image.png" />
+<p>This dialog allows to select the wanted Android system image. Two points are important here:</p>
+<ul class="simple">
+<li>We want to take advantage of the hardware virtualisation feature to accelerate the execution of the emulator. Therefore a x86_64 image is preferable.</li>
+<li>We want root access inside the emulated device to be able to deploy the Frida server. The easiest way to achieve this is not to use a <strong>Target</strong> with installed Google Play Services.</li>
+</ul>
+<p>Therefore:</p>
+<p><strong>ABI</strong>: x86_64</p>
+<p><strong>Target</strong>: Android 9.0 (Google APIs)</p>
+<p>Before starting the newly created Android device, following qemu / KVM packages need to be installed:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="highlight"><pre><span></span>sudo apt-get install qemu-kvm bridge-utils
+</pre></div>
+</td></tr></table><p>Now the emulated Android device can be started by clicking on the green arrow in the Android Virtual Device manager:</p>
+<img alt="AVD manager" src="/images/flarebear/AVD_manager.png" />
+<p>It takes some time until Android booted. But then the virtual device is ready and looks like this:</p>
+<img alt="AVD device" src="/images/flarebear/AVD_device.png" />
+<p>Next we want to get root access at this virtual Device. Together with Android Studio also the Android SDK was installed, which provides tools to access an Android device remotely. To get a shell, we'll use <strong>adb</strong>, the Android debugging bridge. The Android SDK is installed per default at <em>~/Android/Sdk/</em> and <strong>adb</strong> is found in the <strong>platform-tools</strong> folder.</p>
+<p>First let's check whether <strong>adb</strong> recognizes our virtual Android device:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="highlight"><pre><span></span>$:~/Android/Sdk/platform-tools$ ./adb devices -l
+List of devices attached
+emulator-5554          device product:sdk_gphone_x86 model:Android_SDK_built_for_x86 device:generic_x86 transport_id:3
+</pre></div>
+</td></tr></table><p>Next request root access through <strong>adb</strong></p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2</pre></div></td><td class="code"><div class="highlight"><pre><span></span>$:~/Android/Sdk/platform-tools$ ./adb root
+restarting adbd as root
+</pre></div>
+</td></tr></table><p>Then we can get a root shell like this:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="highlight"><pre><span></span>$:~/Android/Sdk/platform-tools$ ./adb shell
+generic_x86:/ <span class="c1"># id</span>
+<span class="nv">uid</span><span class="o">=</span><span class="m">0</span><span class="o">(</span>root<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span><span class="m">0</span><span class="o">(</span>root<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span><span class="m">0</span><span class="o">(</span>root<span class="o">)</span>,1004<span class="o">(</span>input<span class="o">)</span>,1007<span class="o">(</span>log<span class="o">)</span>,1011<span class="o">(</span>adb<span class="o">)</span> &lt;snip&gt;
+</pre></div>
+</td></tr></table><p>Now everything is ready to actually install the FlareBear Android application:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="highlight"><pre><span></span>./adb install ~/Downloads/flare19/Flarebear/flarebear.apk
+</pre></div>
+</td></tr></table><p>After the installation, start the FlareBear application by opening the app menu in the virtual Android device and selecting FlareBear.</p>
+<img alt="inital view of FlareBear app" src="/images/flarebear/flarebear_start.png" />
+<p>Now we can start to play with FlareBear :-) We have three main buttons, which seem to correspond to the three functions we found in the first part:</p>
+<ul class="simple">
+<li>a food button  -&gt; <strong>feed</strong>  function</li>
+<li>a play button  -&gt; <strong>play</strong>  function</li>
+<li>a clean button -&gt; <strong>clean</strong> function</li>
+</ul>
+<p>As we click on these buttons, we change the internal states stored in the sharedPrefereces. Wouldn't it be nice to be able to dump and modify these internal states ? We'll do exactly this in the next and last part of this write-up. We'll using <a class="reference external" href="https://frida.re/">Frida</a>, a well-known dynamic instrumentation toolkit, to hook functions defined in the <strong>FlareBearActivity</strong> class. This gives us the ability to dump and to set the sharedPreferences states and ultimately the ability to get the flag.</p>
+
+  </div>
+</article>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+       <ul class="col-sm-6 list-inline">
+          <li class="list-inline-item"><a href="/archives.html">Archives</a></li>
+          <li class="list-inline-item"><a href="/categories.html">Categories</a></li>
+          <li class="list-inline-item"><a href="/tags.html">Tags</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>
