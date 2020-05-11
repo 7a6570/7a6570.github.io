@@ -9,14 +9,14 @@
 
   <title>Make Flarebear dance with flag using Frida (part one) | zep's blog
 </title>
-  <link rel="canonical" href="/make-flarebear-dance-with-flag-using-frida-part-one.html">
+  <link rel="canonical" href="https://7a6570.github.io/make-flarebear-dance-with-flag-using-frida-part-one.html">
 
 
 
-  <link rel="stylesheet" href="/theme/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/theme/css/font-awesome.min.css">
-  <link rel="stylesheet" href="/theme/css/pygments/native.min.css">
-  <link rel="stylesheet" href="/theme/css/style.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/pygments/native.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/style.css">
 
 
 <meta name="description" content="Flare-On 6 CTF Flarebear challenge write-up">
@@ -27,19 +27,19 @@
     <div class="container">
       <div class="row">
         <div class="col-sm-4">
-          <a href="">
-            <img class="img-fluid" src=/images/zep.png alt="zep's blog">
+          <a href="https://7a6570.github.io">
+            <img class="img-fluid" src=https://7a6570.github.io/images/zep.png alt="zep's blog">
           </a>
         </div>
         <div class="col-sm-8">
-          <h1 class="title"><a href="">zep's blog</a></h1>
+          <h1 class="title"><a href="https://7a6570.github.io">zep's blog</a></h1>
           <p class="text-muted">follow me into the rabbit hole of ITsec</p>
           <ul class="list-inline">
-            <li class="list-inline-item"><a href="/pages/about.html">About</a></li>
-            <li class="list-inline-item"><a href="/pages/contact.html">Contact</a></li>
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/about.html">About</a></li>
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/contact.html">Contact</a></li>
             <li class=" list-inline-item text-muted">|</li>
             <li class="list-inline-item"><a class="fa fa-github" href="https://github.com/7a6570" target="_blank"></a></li>
-            <li class="list-inline-item"><a class="fa fa-feed" href="/feeds/all.atom.xml" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-feed" href="https://7a6570.github.io/feeds/all.atom.xml" target="_blank"></a></li>
             <li class="list-inline-item"><a class="fa fa-twitter" href="https://twitter.com/7a6570" target="_blank"></a></li>
           </ul>
         </div>
@@ -55,23 +55,29 @@
 <article class="article">
   <header>
     <ul class="list-inline">
-      <li class="list-inline-item text-muted" title="2020-03-23T00:00:00+00:00">
+      <li class="list-inline-item text-muted" title="2020-05-11T00:00:00+01:00">
         <i class="fa fa-clock-o"></i>
-        Mon 23 March 2020
+        Mon 11 May 2020
       </li>
       <li class="list-inline-item">
         <i class="fa fa-folder-open-o"></i>
-        <a href="/category/challenges.html">challenges</a>
+        <a href="https://7a6570.github.io/category/challenges.html">challenges</a>
       </li>
       <li class="list-inline-item">
         <i class="fa fa-files-o"></i>
-        <a href="/tag/challenge.html">#challenge</a>,         <a href="/tag/flare.html">#Flare</a>      </li>
+        <a href="https://7a6570.github.io/tag/challenge.html">#challenge</a>,         <a href="https://7a6570.github.io/tag/flare.html">#Flare</a>      </li>
     </ul>
   </header>
   <div class="content">
-    <p>I finally have found some time to participate in Flare-On 6 CTF :-) The challenges were fun and difficulty increased slightly on each. At the third challenge I got stuck and needed quite a bit of research to setup the needed environment to run the challenge. Of course Flarebear can be solved only by static analysis, but that's only for the very experienced reversers ;-) I find the combination of static and dynamic analysis the most efficient for me.</p>
-<p>So this blog is about my journey to solve Flarebear. I will not write down the fastest possible way to solve this, but instead explain a little bit more the wrong paths I took during this adventure ;-)</p>
-<p>OK, let's start. Let's extract the challenge and see what we've got:</p>
+    <img alt="flareon 6 / Flarebear" src="https://7a6570.github.io/images/flarebear/flareon.png" />
+<p>Finally I have found some time to participate in Flare-On 6 CTF :-) The challenges were fun and difficulty increased slightly on each. At the third challenge I got stuck and needed quite a bit of research to setup the needed environment to run the challenge. Of course Flarebear can be solved only by static analysis, but that's only for the very experienced reversers ;-) I find the combination of static and dynamic analysis the most efficient for me.</p>
+<p>So this blog is about my journey to solve Flarebear. I will not write down the fastest possible way to solve this, but instead explain a little bit more the wrong paths I took during this adventure ;-) This is a three part blog post:</p>
+<ul class="simple">
+<li>part <a class="reference external" href="https://7a6570.github.io/make-flarebear-dance-with-flag-using-frida-part-two.html">two</a></li>
+<li>part <a class="reference external" href="https://7a6570.github.io/make-flarebear-dance-with-flag-using-frida-part-three.html">three</a></li>
+</ul>
+<p>The challange can be found <a class="reference external" href="https://github.com/7a6570/challenges/tree/master/flareon6/flarebear">here</a>.
+OK, let's start. Let's extract the challenge and see what we've got:</p>
 <div class="highlight"><pre><span></span>zep@base ~/D/f/3 - Flarebear&gt; ls -l
 total <span class="m">3584</span>
 -rw-r--r-- <span class="m">1</span> zep zep <span class="m">3663929</span> May <span class="m">22</span> <span class="m">13</span>:25 flarebear.apk
@@ -83,7 +89,7 @@ We at Flare have created our own Tamagotchi pet, the flarebear. He is very fussy
 <p>So we have an Android mobile application which behaves like a Tamagotchi. You have to feed, to play or to clean this Flarebear to make him happy and he will eventually give you the flag.</p>
 <p>I never actually reversed an Android application, but I already developed some years ago. So I already knew that these applications run on top of a JVM and can therefore be easily decompiled. I searched for some tools to do the job and found this <a class="reference external" href="https://www.evilsocket.net/2017/04/27/Android-Applications-Reversing-101/">site</a> giving an overview about the available Android reversing tools.</p>
 <p>After playing with apktool I tried <a class="reference external" href="https://github.com/skylot/jadx">jadx</a> and was very pleased. It instantly worked and decompilation of the given APK was easy and fast.</p>
-<img alt="inital view of jadx after decompiling APK" src="/images/flarebear/jadx_initial_view_0.png" />
+<img alt="inital view of jadx after decompiling APK" src="https://7a6570.github.io/images/flarebear/jadx_initial_view_0.png" />
 <p>We can see the different Java packages of which the Flarebear app consists of:</p>
 <ul class="simple">
 <li>android, androidx: The used core Android libraries</li>
@@ -92,7 +98,7 @@ We at Flare have created our own Tamagotchi pet, the flarebear. He is very fussy
 <li>com.fireeye.flarebear: This is the main package of the Flarebear application</li>
 </ul>
 <p>All the interesting stuff happens in the com.fireeye.flarebear package.</p>
-<img alt="contents of com.fireeye.flarebear" src="/images/flarebear/jadx_initial_view.png" />
+<img alt="contents of com.fireeye.flarebear" src="https://7a6570.github.io/images/flarebear/jadx_initial_view.png" />
 <p>We can see already some interesting classes in this Java package, mainly the FlareBearActivity class. Since I've done some Android App development years ago, I vaguely remembered that Activities are important in Androind.. Extending the FlareBearActivity class tree, we can see the corresponding methods and attributes of this Java class. Instantly some method names catch our attention, mainly:</p>
 <ul class="simple">
 <li>danceWithFlag</li>
@@ -186,7 +192,7 @@ We at Flare have created our own Tamagotchi pet, the flarebear. He is very fussy
         <span class="p">}</span>
 <span class="p">}</span>
 </pre></div>
-</td></tr></table><p>The decompiled Java byte code looks promising. First data is fetched from two Android resources named &quot;ecstaticEnc&quot; and &quot;ecstaticEnc2&quot;, which probably means &quot;encrypted ecstatic&quot;. Then a password is retrieved using the <strong>getPassword</strong> method. We have certainly to have a look at this method. Then the fetched resources are decrypted by a <strong>decrypt</strong> method using the retrieved password. The resulting data is interpreted as BitmapDrawable, therefore the searched flag is probably stored an encrypted image.</p>
+</td></tr></table><p>The decompiled Java byte code looks promising. First data is fetched from two Android resources named &quot;ecstaticEnc&quot; and &quot;ecstaticEnc2&quot;, which probably means &quot;encrypted ecstatic&quot;. Then a password is retrieved using the <strong>getPassword</strong> method. We have certainly to have a look at this method. Then the fetched resources are decrypted by a <strong>decrypt</strong> method using the retrieved password. The resulting data is interpreted as BitmapDrawable, therefore the searched flag is probably stored as encrypted image.</p>
 <p>First let's have a look at the <strong>getPassword</strong> method:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
@@ -406,7 +412,7 @@ We at Flare have created our own Tamagotchi pet, the flarebear. He is very fussy
 <span class="p">}</span>
 </pre></div>
 </td></tr></table><p>This method retrieves a string stored in the SharedPreferences store of this Android application. Then the for loop counts the occurrence of the supplied char variable content <strong>c</strong> in the corresponding string (<strong>c</strong> is an argument of this method).</p>
-<p>The method <strong>getPasswors</strong> uses these calls to <strong>getStat</strong>:</p>
+<p>The method <strong>getPassword</strong> uses these calls to <strong>getStat</strong>:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="n">stat</span> <span class="o">=</span> <span class="n">getStat</span><span class="p">(</span><span class="sc">&#39;f&#39;</span><span class="p">);</span>
@@ -463,7 +469,7 @@ We at Flare have created our own Tamagotchi pet, the flarebear. He is very fussy
 <p>Maybe we remember the text given from the challenge creators:</p>
 <div class="highlight"><pre><span></span>&quot;We at Flare have created our own Tamagotchi pet, the flarebear. He is very fussy. Keep him alive and happy and he will give you the flag&quot;
 </pre></div>
-<p>Our FlareBear is a Tamagotchi and this being has basically three needs: eating, playing and to be clean. This maps exactly to the three discovered methods above. Let's have a look at the <strong>clean</strong> function:</p>
+<p>Our Flarebear is a Tamagotchi and this being has basically three needs: eating, playing and to be clean. This maps exactly to the three discovered methods above. Let's have a look at the <strong>clean</strong> function:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -492,10 +498,10 @@ We at Flare have created our own Tamagotchi pet, the flarebear. He is very fussy
         <span class="n">setMood</span><span class="p">();</span>
 <span class="p">}</span>
 </pre></div>
-</td></tr></table><p>This function modifies the state of the Tamagotchi, in particular it uses the <strong>saveActivity</strong> function to add char <strong>c</strong> to the key <strong>activity</strong> in the sharedPrefercnes. Furthermore the state of <strong>mass*, **happy</strong> and <strong>clean</strong> are also changed. As showed above, the function <strong>changeClean</strong> saves its state to the <strong>clean</strong> key in the sharedPreferences, as the other two methods do.</p>
+</td></tr></table><p>This function modifies the state of the Tamagotchi, in particular it uses the <strong>saveActivity</strong> function to add char <strong>c</strong> to the key <strong>activity</strong> in the sharedPrefercnes. Furthermore the state of <strong>mass</strong>, <strong>happy</strong> and <strong>clean</strong> are also changed. As showed above, the function <strong>changeClean</strong> saves its state to the <strong>clean</strong> key in the sharedPreferences, as the other two methods do.</p>
 <p>Above we found the <strong>getPassword</strong> function, which called three times the <strong>getStat</strong> function to retrieve the occurrence of the chars <strong>f</strong>, <strong>c</strong>, and <strong>p</strong> from the key <strong>activity</strong> from the sharedPreferences. As we have found out, the function <strong>clean</strong> modifies the values from the <strong>activity</strong> key. As so the other two functions <strong>play</strong> and <strong>feed</strong>.</p>
-<p>We can now assume that this three functions control the state of the Tamagotchi and the right combination of calls will set the correct state in the <strong>activity</strong> sharedPreferences. This correct state will lead to the correct password generated by the <strong>getPassword</strong> function, which will decrypt the flag, which is stored as Bitmap graphic.</p>
-<p>For now this is it. In part two of this blog, we'll setup the needed environment to actually run the FlareBear Android application to have fun with Frida ;-)</p>
+<p>We can now assume that this three functions control the state of the Tamagotchi and the correct combination of calls will set the correct state in the <strong>activity</strong> sharedPreferences. This correct state will lead to the correct password generated by the <strong>getPassword</strong> function, which will decrypt the flag, which is stored as Bitmap graphic.</p>
+<p>For now this is it. In part <a class="reference external" href="https://7a6570.github.io/make-flarebear-dance-with-flag-using-frida-part-two.html">two</a> of this blog, we'll setup the needed environment to actually run the Flarebear Android application to have fun with Frida ;-)</p>
 
   </div>
 </article>
@@ -506,9 +512,9 @@ We at Flare have created our own Tamagotchi pet, the flarebear. He is very fussy
     <div class="container">
       <div class="row">
        <ul class="col-sm-6 list-inline">
-          <li class="list-inline-item"><a href="/archives.html">Archives</a></li>
-          <li class="list-inline-item"><a href="/categories.html">Categories</a></li>
-          <li class="list-inline-item"><a href="/tags.html">Tags</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/archives.html">Archives</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/categories.html">Categories</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/tags.html">Tags</a></li>
         </ul>
       </div>
     </div>

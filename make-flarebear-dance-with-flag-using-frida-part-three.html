@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <title>Make Flarebear dance with flag using Frida (part three) | zep's blog
+</title>
+  <link rel="canonical" href="https://7a6570.github.io/make-flarebear-dance-with-flag-using-frida-part-three.html">
+
+
+
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/pygments/native.min.css">
+  <link rel="stylesheet" href="https://7a6570.github.io/theme/css/style.css">
+
+
+<meta name="description" content="Flare-On 6 CTF Flarebear challenge write-up">
+</head>
+
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-4">
+          <a href="https://7a6570.github.io">
+            <img class="img-fluid" src=https://7a6570.github.io/images/zep.png alt="zep's blog">
+          </a>
+        </div>
+        <div class="col-sm-8">
+          <h1 class="title"><a href="https://7a6570.github.io">zep's blog</a></h1>
+          <p class="text-muted">follow me into the rabbit hole of ITsec</p>
+          <ul class="list-inline">
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/about.html">About</a></li>
+            <li class="list-inline-item"><a href="https://7a6570.github.io/pages/contact.html">Contact</a></li>
+            <li class=" list-inline-item text-muted">|</li>
+            <li class="list-inline-item"><a class="fa fa-github" href="https://github.com/7a6570" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-feed" href="https://7a6570.github.io/feeds/all.atom.xml" target="_blank"></a></li>
+            <li class="list-inline-item"><a class="fa fa-twitter" href="https://twitter.com/7a6570" target="_blank"></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="container">
+      <h1>Make Flarebear dance with flag using Frida (part three)
+</h1>
+      <hr>
+<article class="article">
+  <header>
+    <ul class="list-inline">
+      <li class="list-inline-item text-muted" title="2020-05-11T00:00:00+01:00">
+        <i class="fa fa-clock-o"></i>
+        Mon 11 May 2020
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-folder-open-o"></i>
+        <a href="https://7a6570.github.io/category/challenges.html">challenges</a>
+      </li>
+      <li class="list-inline-item">
+        <i class="fa fa-files-o"></i>
+        <a href="https://7a6570.github.io/tag/challenge.html">#challenge</a>,         <a href="https://7a6570.github.io/tag/flare.html">#Flare</a>      </li>
+    </ul>
+  </header>
+  <div class="content">
+    <p>In this third and last part of this blog post, we'll finally use Frida to hook some interesting Java methods inside of the Flarebear Android application. This will allow us to dump and to set the internal state of the Flarebear application, which finally allows us to set the correct state to make Flarebear dance ;-)</p>
+<div class="section" id="frida-installation">
+<h2>Frida installation</h2>
+<p>First we need to install Frida on the running virtual Android device and also locally on the host machine.
+Frida's website is located at <a class="reference external" href="https://frida.re">frida.re</a> and hosts howto's and documentation. The source code of Frida is hosted at Github: <a class="reference external" href="https://github.com/frida">github.com/frida</a></p>
+<p>We'll use the python bindings of Frida on the host machine. To install these bindings, use <strong>pip3 install frida-tools</strong>.
+The corresponding Frida executables are now located at ~/.local/bin. To make them easily available, add this directory to $PATH:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ <span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;~/.local/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span>
+</pre></div>
+<p>We also need the &quot;agent&quot; part of Frida: A small executable running inside the actual Android device, this is called &quot;Frida server&quot;. The various different Frida server executables are available at <a class="reference external" href="https://github.com/frida/frida/releases">github.com/frida/frida/releases</a>.</p>
+<p>It's very important to pick the correct Frida server executable for the corresponding platform and architecture, otherwise Frida will not work. In our case we have an Android device which runs on x86_64. Therefore we'll using <strong>frida-server-12.8.20-android-x86_64</strong></p>
+<p>Download the corresponding file and extract it like this:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ unxz frida-server-12.8.20-android-x86_64.xz
+zep@base:~/$ mv frida-server-12.8.20-android-x86_64 frida-server
+</pre></div>
+<p>Then we nee to install the extracted agent on the virtual Android device. We'll do this using <strong>adb</strong>:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ ./adb push ~/Downloads/frida-server /data/local/tmp/
+zep@base:~/$ ./adb shell <span class="s2">&quot;chmod 755 /data/local/tmp/frida-server&quot;</span>
+</pre></div>
+<p>Remember <strong>adb</strong> is located in the Android SDK in the platform-tools folder. In my case the <strong>adb</strong> is located at ~/Android/Sdk/platform-tools. Finally we can start <strong>frida-server</strong> like this:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ ./adb shell <span class="s2">&quot;/data/local/tmp/frida-server &amp;&quot;</span>
+</pre></div>
+<p>To test the connection, we can use <strong>frida-ps</strong>:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ frida-ps -U
+</pre></div>
+<p><strong>frida-ps</strong> should now list all running processes on the virtual Android device.</p>
+<p>If you get instead following error message while trying to start <strong>frida-server</strong>, then you have probably the wrong <strong>frida-server</strong> executable:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ ./adb shell <span class="s2">&quot;/data/local/tmp/frida-serverd &amp;&quot;</span>
+/system/bin/sh: /data/local/tmp/frida-server: No such file or directory
+</pre></div>
+<p>Frida is now installed and ready to use. But first, how does Frida actually work and why do we need an &quot;agent&quot; executable?
+The functionality of Frida is described like this in the documentation:</p>
+<div class="highlight"><pre><span></span>This functionality is provided by frida-core, which acts as a logistics
+layer that packages up GumJS into a shared library that it injects into
+existing software, and provides a two-way communication channel for
+talking to your scripts, if needed, and later unload them. Beside this
+core functionality, frida-core also lets you enumerate installed apps,
+running processes, and connected devices. The connected devices are
+typically iOS and Android devices where frida-server is running.
+That component is essentially just a daemon that exposes frida-core
+over TCP, listening on localhost:27042 by default.
+</pre></div>
+<p>There are many different modes of operation for Frida. It also possible to <a class="reference external" href="https://lief.quarkslab.com/doc/latest/tutorials/09_frida_lief.html#id9">bundle</a> Frida gadget directly with the target Android application.</p>
+</div>
+<div class="section" id="dumping-the-state-of-flarebear">
+<h2>Dumping the state of Flarebear</h2>
+<p>From part one and two we already know that three visible buttons of the Flarebear application call the three functions <strong>play</strong>, <strong>feed</strong> and <strong>clean</strong> inside of the Flarebear activity. These functions are therefore good candidates to hook, since we can easily trigger their execution. Let's take the <strong>play</strong> function and hook it and redirect execution to our own defined snipped of Javascript code.</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">frida</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">on_message</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;send&#39;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[*] </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s1">&#39;payload&#39;</span><span class="p">]))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+<span class="n">jscode</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">Java.perform(function () {</span>
+
+<span class="s2">  var MainActivity = Java.use(&#39;com.fireeye.flarebear.FlareBearActivity&#39;);</span>
+<span class="s2">  var play = MainActivity.play;</span>
+
+<span class="s2">  // Function to hook is defined here</span>
+<span class="s2">  play.implementation = function (v) {</span>
+
+<span class="s2">      // Show a message to know that the function got called</span>
+<span class="s2">      send(&#39;play fn hooked&#39;);</span>
+
+<span class="s2">      // define function to call instead of original play function</span>
+<span class="s2">      var getState = MainActivity.getState.overload(&#39;java.lang.String&#39;, &#39;java.lang.String&#39;);</span>
+<span class="s2">      var getStat = MainActivity.getStat;</span>
+
+<span class="s2">      // call the getState function and send back the result</span>
+<span class="s2">      var state = getState.call(this, &#39;activity&#39;, &#39;&#39;);</span>
+<span class="s2">      send(&quot;get activity shared preferences: &quot; + state);</span>
+<span class="s2">  };</span>
+<span class="s2">});</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">process</span> <span class="o">=</span> <span class="n">frida</span><span class="o">.</span><span class="n">get_usb_device</span><span class="p">()</span><span class="o">.</span><span class="n">attach</span><span class="p">(</span><span class="s1">&#39;com.fireeye.flarebear&#39;</span><span class="p">)</span>
+
+<span class="n">script</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">create_script</span><span class="p">(</span><span class="n">jscode</span><span class="p">)</span>
+<span class="n">script</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s1">&#39;message&#39;</span><span class="p">,</span> <span class="n">on_message</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;[*] tracing flarebar...&#39;</span><span class="p">)</span>
+
+<span class="n">script</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+</td></tr></table><p>To use the Frida Python bindings, the <strong>frida</strong> module has to be imported.
+At line 33, we instruct <strong>frida-server</strong> to attach to the Flarebear application and to inject a small Javascript engine (which is actually part of Frida gadget). This Javascript code communicates with <strong>frida-server</strong> and is completely scriptable. To actually hook the <strong>play</strong> function, we have to write a short snipped of Javascript code, which does all the work.</p>
+<p>At line 10, the used Javascript code is defined. At line 13 and 14 a &quot;reference&quot; to the <strong>play</strong> function is defined.
+At line 17, the <strong>play</strong> function is actually hooked by replacing its implementation. The Javascript code defined there is executed as soon as the original <strong>play</strong> function is called.
+We are interested in the internal state of the Flarebear application. To get this state, we can call the <strong>getState</strong> function supplying the right parameter, which are &quot;activity&quot; and &quot;&quot; (line 27).
+Finally we're sending back the resulting data (line 28).</p>
+<p>Let's try out this script and see what internal state we can get.</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20</pre></div></td><td class="code"><div class="highlight"><pre><span></span>zep@base:~/$ python3 play.py
+<span class="o">[</span>*<span class="o">]</span> tracing flarebar...
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences:
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences:
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences:
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences: f
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences: ff
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences: fff
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences: fffc
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences: fffcc
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> get activity shared preferences: fffccc
+</pre></div>
+</td></tr></table><p>When pressing the play button, the internal state obviously does not change, since we hooked this function and do not call the original implementation. But when pressing the <strong>clean</strong> or the <strong>feed</strong> button, we can observe that the state changes.</p>
+<ul class="simple">
+<li>When pressing the <strong>feed</strong> button, the char <strong>f</strong> is added to the state.</li>
+<li>When pressing the <strong>clean</strong> button, the char <strong>c</strong> is added to the state.</li>
+</ul>
+<p>Now remember the function <strong>getPassword</strong> which uses the function <strong>getStat</strong> to retrieve the count of the chars <strong>f</strong>, <strong>c</strong> and <strong>p</strong> from the sharedPreferences ? These counts are then used to generate a password, which is then used to decrypt the flag which is stored as an encrypted image file.</p>
+<p>This means following: The right number of clicks on the play, feed or clean button results in the correct counts of the chars <strong>f</strong>, <strong>c</strong> and <strong>p</strong> which results in the correct password. But which combination of these chars is &quot;correct&quot; ?</p>
+<p>We can search for cross-references of the <strong>getPassword</strong> function and analyze the calling function. In this case, <strong>getPassword</strong> is called by the function <strong>danceWithFlag</strong>. This function is called by the function <strong>setMood</strong>:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">setMood</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">isHappy</span><span class="p">())</span> <span class="p">{</span>
+            <span class="p">((</span><span class="n">ImageView</span><span class="p">)</span> <span class="n">_$_findCachedViewById</span><span class="p">(</span><span class="n">R</span><span class="p">.</span><span class="na">id</span><span class="p">.</span><span class="na">flareBearImageView</span><span class="p">)).</span><span class="na">setTag</span><span class="p">(</span><span class="s">&quot;happy&quot;</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">isEcstatic</span><span class="p">())</span> <span class="p">{</span>
+                <span class="n">danceWithFlag</span><span class="p">();</span>
+                <span class="k">return</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="p">((</span><span class="n">ImageView</span><span class="p">)</span> <span class="n">_$_findCachedViewById</span><span class="p">(</span><span class="n">R</span><span class="p">.</span><span class="na">id</span><span class="p">.</span><span class="na">flareBearImageView</span><span class="p">)).</span><span class="na">setTag</span><span class="p">(</span><span class="s">&quot;sad&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+</pre></div>
+</td></tr></table><p>Analyzing the <strong>setMood</strong> function, we can deduce that Flarebear must be &quot;happy&quot; and &quot;ecstatic&quot; before &quot;dancingWithFlag&quot;.
+The corresponding function looks like this:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4</pre></div></td><td class="code"><div class="highlight"><pre><span></span> <span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">isHappy</span><span class="p">()</span> <span class="p">{</span>
+     <span class="kt">double</span> <span class="n">stat</span> <span class="o">=</span> <span class="p">(</span><span class="kt">double</span><span class="p">)</span> <span class="p">(((</span><span class="kt">float</span><span class="p">)</span> <span class="n">getStat</span><span class="p">(</span><span class="sc">&#39;f&#39;</span><span class="p">))</span> <span class="o">/</span> <span class="p">((</span><span class="kt">float</span><span class="p">)</span> <span class="n">getStat</span><span class="p">(</span><span class="sc">&#39;p&#39;</span><span class="p">)));</span>
+     <span class="k">return</span> <span class="n">stat</span> <span class="o">&gt;=</span> <span class="mf">2.0d</span> <span class="o">&amp;&amp;</span> <span class="n">stat</span> <span class="o">&lt;=</span> <span class="mf">2.5d</span><span class="p">;</span>
+ <span class="p">}</span>
+</pre></div>
+</td></tr></table><p>We can see that the function <strong>isHappy</strong> checks the relation between the counts of the char <strong>f</strong> and <strong>p</strong>. This relation actually models an constraint, which expresses that Flarebear must at least &quot;eat&quot; two times more that that it &quot;plays&quot;.</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9</pre></div></td><td class="code"><div class="highlight"><pre><span></span> <span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">isEcstatic</span><span class="p">()</span> <span class="p">{</span>
+     <span class="kt">int</span> <span class="n">state</span> <span class="o">=</span> <span class="n">getState</span><span class="p">(</span><span class="s">&quot;mass&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+     <span class="kt">int</span> <span class="n">state2</span> <span class="o">=</span> <span class="n">getState</span><span class="p">(</span><span class="s">&quot;happy&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+     <span class="kt">int</span> <span class="n">state3</span> <span class="o">=</span> <span class="n">getState</span><span class="p">(</span><span class="s">&quot;clean&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+     <span class="k">if</span> <span class="p">(</span><span class="n">state</span> <span class="o">==</span> <span class="mi">72</span> <span class="o">&amp;&amp;</span> <span class="n">state2</span> <span class="o">==</span> <span class="mi">30</span> <span class="o">&amp;&amp;</span> <span class="n">state3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+         <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+     <span class="p">}</span>
+     <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+ <span class="p">}</span>
+</pre></div>
+</td></tr></table><p>Also the function <strong>isEcstatic</strong> models constraints which define when Flarebear is &quot;ecstatic&quot; and gives the flag:</p>
+<ul class="simple">
+<li>mass must be 72</li>
+<li>happy must be 30</li>
+<li>clean must be 0</li>
+</ul>
+<p>Note that this function calls <strong>getState</strong> and not <strong>getStat</strong>, this are actually two different functions which sound quite similar..</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6
+7</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kd">public</span> <span class="kd">final</span> <span class="n">String</span> <span class="nf">getState</span><span class="p">(</span><span class="nd">@NotNull</span> <span class="n">String</span> <span class="n">str</span><span class="p">,</span> <span class="nd">@NotNull</span> <span class="n">String</span> <span class="n">str2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">Intrinsics</span><span class="p">.</span><span class="na">checkParameterIsNotNull</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="s">&quot;key&quot;</span><span class="p">);</span>
+        <span class="n">Intrinsics</span><span class="p">.</span><span class="na">checkParameterIsNotNull</span><span class="p">(</span><span class="n">str2</span><span class="p">,</span> <span class="s">&quot;defValue&quot;</span><span class="p">);</span>
+        <span class="n">String</span> <span class="n">string</span> <span class="o">=</span> <span class="n">PreferenceManager</span><span class="p">.</span><span class="na">getDefaultSharedPreferences</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="na">getString</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">str2</span><span class="p">);</span>
+        <span class="n">Intrinsics</span><span class="p">.</span><span class="na">checkExpressionValueIsNotNull</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="s">&quot;sharedPref.getString(key, defValue)&quot;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="n">string</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table><p>The function <strong>getState</strong> actually returns the value for a given key from the sharedPreferences. We already have found out that there are four different used keys for the sharedPreferences:</p>
+<ul class="simple">
+<li>activity, used by the <strong>saveActivity</strong> function</li>
+<li>clean, used by the <strong>changeClean</strong> function</li>
+<li>happy, used by the <strong>changeHappy</strong> function</li>
+<li>mass, used by the <strong>changeMass</strong> function</li>
+</ul>
+<p>Let's have a look at the <strong>changeHappy</strong> function:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">changeHappy</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">String</span> <span class="n">str</span> <span class="o">=</span> <span class="s">&quot;happy&quot;</span><span class="p">;</span>
+    <span class="n">setState</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">getState</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">i</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table><p>This function increases the stored integer for the key &quot;happy&quot; by the amount of <strong>i</strong>. But from where is this function <strong>changeHappy</strong> actually called ? A quick search reveals the three already known functions <strong>play</strong>, <strong>feed</strong> and <strong>clean</strong>. Let's have a look at the <strong>feed</strong> function:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">feed</span><span class="p">(</span><span class="nd">@NotNull</span> <span class="n">View</span> <span class="n">view</span><span class="p">)</span> <span class="p">{</span>
+       <span class="n">Intrinsics</span><span class="p">.</span><span class="na">checkParameterIsNotNull</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="s">&quot;view&quot;</span><span class="p">);</span>
+
+       <span class="n">saveActivity</span><span class="p">(</span><span class="s">&quot;f&quot;</span><span class="p">);</span> <span class="c1">// this concatenates &#39;f&#39; to the activity sharedPreferences string</span>
+
+       <span class="n">changeMass</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>    <span class="c1">// this adds 10 to   the mass  sharedPreferences integer</span>
+       <span class="n">changeHappy</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>    <span class="c1">// this adds 2  to   the happy sharedPreferences integer</span>
+       <span class="n">changeClean</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>   <span class="c1">// this adds -1 from the clen  sharedPreferences integer</span>
+
+       <span class="n">incrementPooCount</span><span class="p">();</span>
+       <span class="n">feedUi</span><span class="p">();</span>
+   <span class="p">}</span>
+</pre></div>
+</td></tr></table><p>We can see that a press on the feed button and the corresponding execution of the <strong>feed</strong> function calls the three functions <strong>changeMass</strong>, <strong>changeHappy</strong> and <strong>changeClean</strong> which in turn add or subtract the given value from the integers stored in the corresponding sharedPreferences values. The correct amount of clicks on the buttons changes the internal state of Flarebear to the correct state string, which consists of the chars <strong>f</strong>, <strong>c</strong> and <strong>p</strong>.</p>
+<p>Since we can analyze the changes the corresponding functions <strong>changeClean</strong>, <strong>changeHappy</strong> and <strong>changeMass</strong> have to the state string, we can also calculate the correct state string. Once we have the correct internal state, we can set it using Frida and call the function <strong>danceWithFlag</strong>. This function will then call the other mentioned functions to decrypt and display the flag.</p>
+</div>
+<div class="section" id="calculating-the-state-string">
+<h2>Calculating the state string</h2>
+<p>First lets summarize the found constraints.</p>
+<p>Final values for Flarebear to be &quot;ecstatic&quot;:</p>
+<ul class="simple">
+<li>mass must be 72</li>
+<li>happy must be 30</li>
+<li>clean must be 0</li>
+</ul>
+<p>We can influence these values by pressing the corresponding buttons in the application.</p>
+<div class="section" id="play-button">
+<h3>Play button</h3>
+<ul class="simple">
+<li>add -2 to mass</li>
+<li>add 4  to happy</li>
+<li>add -1 to clean</li>
+</ul>
+</div>
+<div class="section" id="clean-button">
+<h3>Clean button</h3>
+<ul class="simple">
+<li>add 0  to mass</li>
+<li>add -1 to happy</li>
+<li>add 6  to clean</li>
+</ul>
+</div>
+<div class="section" id="feed-button">
+<h3>Feed button</h3>
+<ul class="simple">
+<li>add 10 to mass</li>
+<li>add 2  to happy</li>
+<li>add -1 to clean</li>
+</ul>
+</div>
+</div>
+<div class="section" id="defining-a-system-of-linear-equations">
+<h2>Defining a system of linear equations</h2>
+<p>To calculate a working solution of the correct buttons clicks, we can define a system of linear equations and solve this system using well known linear algebra techniques.</p>
+<p>For the mass value we get following equation:</p>
+<img alt="equation for mass constraints" src="https://7a6570.github.io/images/flarebear/mass_equation.png" />
+<p>For the happy value we get following equation:</p>
+<img alt="equation for happy constraints" src="https://7a6570.github.io/images/flarebear/happy_equation.png" />
+<p>For the clean value we get following equation:</p>
+<img alt="equation for clean constraints" src="https://7a6570.github.io/images/flarebear/clean_equation.png" />
+<p>The equations above are intentionally very verbose and can be further simplified (e.g -1x equals -x).</p>
+<ul class="simple">
+<li>x represents the number of button clicks for the feed button</li>
+<li>y represents the number of button clicks for the clean button</li>
+<li>z represents the number of button clicks for the play button</li>
+</ul>
+<p>These equations can be transformed to following system of equations:</p>
+<img alt="not simplified system of linear equations" src="https://7a6570.github.io/images/flarebear/equations_not_simplified.png" />
+<p>This can be simplified to:</p>
+<img alt="system of linear equations" src="https://7a6570.github.io/images/flarebear/equations.png" />
+<p>This system of equations can now be solved easily by hand or by using help from the <strong>numpy</strong> python library:</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+<span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">72</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+</pre></div>
+<p>There is only one solution for this system:</p>
+<img alt="solution of system of linear equations" src="https://7a6570.github.io/images/flarebear/solution_system.png" />
+<p>To get the flag, we have to press</p>
+<ul class="simple">
+<li>8 times the feed button</li>
+<li>2 times the clean button</li>
+<li>4 times the play button</li>
+</ul>
+<p>We could now press these buttons by hand to get the flag or we can use Frida to set the calculated internal state. This would also work if the actual number of button clicks would be much higher.</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">frida</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">on_message</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;send&#39;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[*] </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s1">&#39;payload&#39;</span><span class="p">]))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+
+<span class="n">jscode</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">Java.perform(function () {</span>
+<span class="s2">  // Function to hook is defined here</span>
+<span class="s2">  var MainActivity = Java.use(&#39;com.fireeye.flarebear.FlareBearActivity&#39;);</span>
+
+<span class="s2">  var play = MainActivity.play;</span>
+<span class="s2">  play.implementation = function (v) {</span>
+
+<span class="s2">    // Show a message to know that the function got called</span>
+<span class="s2">    send(&#39;play fn hooked&#39;);</span>
+
+<span class="s2">    var setStateStr = MainActivity.setState.overload(&#39;java.lang.String&#39;, &#39;java.lang.String&#39;);</span>
+<span class="s2">    var getStateStr = MainActivity.getState.overload(&#39;java.lang.String&#39;, &#39;java.lang.String&#39;);</span>
+
+<span class="s2">    send(&quot;set activity shared prefs to calculated solution [8,2,4]&quot;);</span>
+<span class="s2">    setStateStr.call(this, &#39;activity&#39;, &#39;ffffffffccpppp&#39;);</span>
+
+<span class="s2">    send(&quot;get activity shared prefs: &quot; + getStateStr.call(this, &#39;activity&#39;, &#39;&#39;));</span>
+
+<span class="s2">    var getStat = MainActivity.getStat;</span>
+
+<span class="s2">    send(&quot;getStat for value f: &quot; + getStat.call(this, &#39;f&#39;));</span>
+<span class="s2">    send(&quot;getStat for value p: &quot; + getStat.call(this, &#39;p&#39;));</span>
+<span class="s2">    send(&quot;getStat for value c: &quot; + getStat.call(this, &#39;c&#39;));</span>
+
+<span class="s2">    var setState = MainActivity.setState.overload(&#39;java.lang.String&#39;, &#39;int&#39;);</span>
+
+<span class="s2">    send(&quot;setting mass to 72&quot;);</span>
+<span class="s2">    setState.call(this, &#39;mass&#39;, 72);</span>
+
+<span class="s2">    send(&quot;setting happy to 30&quot;);</span>
+<span class="s2">    setState.call(this, &#39;happy&#39;, 30);</span>
+
+<span class="s2">    send(&quot;setting clean to 0&quot;);</span>
+<span class="s2">    setState.call(this, &#39;clean&#39;, 0);</span>
+
+<span class="s2">    var getState = MainActivity.getState.overload(&#39;java.lang.String&#39;, &#39;int&#39;);</span>
+
+<span class="s2">    send(&quot;actual mass: &quot; + getState.call(this, &#39;mass&#39;, 0));</span>
+<span class="s2">    send(&quot;actual clean: &quot; + getState.call(this, &#39;clean&#39;, 0));</span>
+<span class="s2">    send(&quot;actual happy: &quot; + getState.call(this, &#39;happy&#39;, 0));</span>
+
+<span class="s2">    var isEcstatic = MainActivity.isEcstatic;</span>
+<span class="s2">    send(&quot;is Ecstatic? &quot; + isEcstatic.call(this));</span>
+
+<span class="s2">    var getPassword = MainActivity.getPassword;</span>
+<span class="s2">    send(&quot;password is: &quot; + getPassword.call(this));</span>
+
+<span class="s2">    var danceWithFlag = MainActivity.danceWithFlag;</span>
+<span class="s2">    send(&quot;called danceWithFlag&quot;);</span>
+<span class="s2">    danceWithFlag.call(this);</span>
+
+<span class="s2">    // Call the original function</span>
+<span class="s2">    //play.call(this, v);</span>
+<span class="s2">  };</span>
+<span class="s2">});</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
+<span class="n">process</span> <span class="o">=</span> <span class="n">frida</span><span class="o">.</span><span class="n">get_usb_device</span><span class="p">()</span><span class="o">.</span><span class="n">attach</span><span class="p">(</span><span class="s1">&#39;com.fireeye.flarebear&#39;</span><span class="p">)</span>
+
+<span class="n">script</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">create_script</span><span class="p">(</span><span class="n">jscode</span><span class="p">)</span>
+<span class="n">script</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s1">&#39;message&#39;</span><span class="p">,</span> <span class="n">on_message</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;[*] tracing flarebar...&#39;</span><span class="p">)</span>
+
+<span class="n">script</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+</td></tr></table><p>Lets use the script above to get the flag:</p>
+<div class="highlight"><pre><span></span>zep@base:~/$ python3 flare.py
+<span class="o">[</span>*<span class="o">]</span> tracing flarebar...
+<span class="o">[</span>*<span class="o">]</span> play fn hooked
+<span class="o">[</span>*<span class="o">]</span> <span class="nb">set</span> activity shared prefs to calculated solution <span class="o">[</span><span class="m">8</span>,2,4<span class="o">]</span>
+<span class="o">[</span>*<span class="o">]</span> get activity shared prefs: ffffffffccpppp
+<span class="o">[</span>*<span class="o">]</span> getStat <span class="k">for</span> value f: <span class="m">8</span>
+<span class="o">[</span>*<span class="o">]</span> getStat <span class="k">for</span> value p: <span class="m">4</span>
+<span class="o">[</span>*<span class="o">]</span> getStat <span class="k">for</span> value c: <span class="m">2</span>
+<span class="o">[</span>*<span class="o">]</span> setting mass to <span class="m">72</span>
+<span class="o">[</span>*<span class="o">]</span> setting happy to <span class="m">30</span>
+<span class="o">[</span>*<span class="o">]</span> setting clean to <span class="m">0</span>
+<span class="o">[</span>*<span class="o">]</span> actual mass: <span class="m">72</span>
+<span class="o">[</span>*<span class="o">]</span> actual clean: <span class="m">0</span>
+<span class="o">[</span>*<span class="o">]</span> actual happy: <span class="m">30</span>
+<span class="o">[</span>*<span class="o">]</span> is Ecstatic? <span class="nb">true</span>
+<span class="o">[</span>*<span class="o">]</span> password is: flareflareflareflare*BEARBEARBEARBEARBEARBEARBEARBEAR+yeahyeah
+<span class="o">[</span>*<span class="o">]</span> called danceWithFlag
+</pre></div>
+<p>This gives us following flag:</p>
+<img alt="flag" src="https://7a6570.github.io/images/flarebear/flag.png" />
+</div>
+
+  </div>
+</article>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+       <ul class="col-sm-6 list-inline">
+          <li class="list-inline-item"><a href="https://7a6570.github.io/archives.html">Archives</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/categories.html">Categories</a></li>
+          <li class="list-inline-item"><a href="https://7a6570.github.io/tags.html">Tags</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>
